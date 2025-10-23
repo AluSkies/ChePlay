@@ -1,26 +1,41 @@
 package org.cheplay.algorithm.divideandconquer;
 
 import java.util.List;
-import java.util.Collections;
+import java.util.Map;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 
 public class QuickSort {
-    public static void quicksort(List<Integer> arr, int low, int high) {
-        if (low >= high) return;
-        int p = partition(arr, low, high);
-        quicksort(arr, low, p - 1);
-        quicksort(arr, p + 1, high);
-    }
 
-    private static int partition(List<Integer> arr, int low, int high) {
-        int pivot = arr.get(high);
-        int i = low;
-        for (int j = low; j < high; j++) {
-            if (arr.get(j) <= pivot) {
-                Collections.swap(arr, i, j);
-                i++;
-            }
+    public static LinkedHashMap<String, Integer> quicksort(LinkedHashMap<String, Integer> map) {
+        if (map.size() <= 1) return map;
+
+        List<Map.Entry<String, Integer>> entries = new ArrayList<>(map.entrySet());
+
+        int pivotIndex = entries.size() / 2;
+        int pivotValue = entries.get(pivotIndex).getValue();
+
+        LinkedHashMap<String, Integer> menores = new LinkedHashMap<>();
+        LinkedHashMap<String, Integer> iguales = new LinkedHashMap<>();
+        LinkedHashMap<String, Integer> mayores = new LinkedHashMap<>();
+
+        for (Map.Entry<String, Integer> entry : entries) {
+            if (entry.getValue() < pivotValue)
+                menores.put(entry.getKey(), entry.getValue());
+            else if (entry.getValue().equals(pivotValue))
+                iguales.put(entry.getKey(), entry.getValue());
+            else
+                mayores.put(entry.getKey(), entry.getValue());
         }
-        Collections.swap(arr, i, high);
-        return i;
+
+        menores = quicksort(menores);
+        mayores = quicksort(mayores);
+
+        LinkedHashMap<String, Integer> resultado = new LinkedHashMap<>();
+        resultado.putAll(menores);
+        resultado.putAll(iguales);
+        resultado.putAll(mayores);
+
+        return resultado;
     }
 }

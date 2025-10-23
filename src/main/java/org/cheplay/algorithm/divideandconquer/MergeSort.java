@@ -1,26 +1,47 @@
 package org.cheplay.algorithm.divideandconquer;
 
-import java.util.List;
-import java.util.ArrayList;
+import java.util.*;
 
 public class MergeSort {
-    public static void mergeSort(List<Integer> arr, int left, int right) {
-        if (left >= right) return;
-        int mid = (left + right) / 2;
-        mergeSort(arr, left, mid);
-        mergeSort(arr, mid + 1, right);
-        merge(arr, left, mid, right);
+
+    public static LinkedHashMap<String, Integer> mergeSortByValue(Map<String, Integer> map) {
+        
+        List<String> keys = new ArrayList<>(map.keySet());
+        
+        mergeSort(keys, map);
+
+        LinkedHashMap<String, Integer> sortedMap = new LinkedHashMap<>();
+        for (String key : keys) {
+            sortedMap.put(key, map.get(key));
+        }
+        
+        return sortedMap;
     }
 
-    private static void merge(List<Integer> arr, int left, int mid, int right) {
-        List<Integer> tmp = new ArrayList<>();
-        int i = left, j = mid + 1;
-        while (i <= mid && j <= right) {
-            if (arr.get(i) <= arr.get(j)) tmp.add(arr.get(i++));
-            else tmp.add(arr.get(j++));
+    private static void mergeSort(List<String> keys, Map<String, Integer> map) {
+        if (keys.size() <= 1) return;
+
+        int mid = keys.size() / 2;
+        List<String> left = new ArrayList<>(keys.subList(0, mid));
+        List<String> right = new ArrayList<>(keys.subList(mid, keys.size()));
+
+        mergeSort(left, map);
+        mergeSort(right, map);
+
+        merge(keys, left, right, map);
+    }
+
+    private static void merge(List<String> result, List<String> left, List<String> right, Map<String, Integer> map) {
+        int i = 0, j = 0, k = 0;
+
+        while (i < left.size() && j < right.size()) {
+            if (map.get(left.get(i)) <= map.get(right.get(j))) {
+                result.set(k++, left.get(i++));
+            } else {
+                result.set(k++, right.get(j++));
+            }
         }
-        while (i <= mid) tmp.add(arr.get(i++));
-        while (j <= right) tmp.add(arr.get(j++));
-        for (int k = left; k <= right; k++) arr.set(k, tmp.get(k - left));
+        while (i < left.size()) result.set(k++, left.get(i++));
+        while (j < right.size()) result.set(k++, right.get(j++));
     }
 }
