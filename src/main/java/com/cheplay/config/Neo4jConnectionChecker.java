@@ -1,4 +1,4 @@
-package org.cheplay;
+package com.cheplay.config;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;

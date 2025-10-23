@@ -1,4 +1,4 @@
-package org.cheplay;
+package com.cheplay;
 
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.Driver;
