@@ -1,53 +1,59 @@
 package org.cheplay.service;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+
+import org.cheplay.algorithm.backtracking.BacktrackingExamples;
+import org.cheplay.algorithm.branchandbound.BranchAndBoundExamples;
 import org.cheplay.algorithm.divideandconquer.MergeSort;
 import org.cheplay.algorithm.divideandconquer.QuickSort;
+import org.cheplay.algorithm.dynamic.DynamicProgrammingExamples;
 import org.cheplay.algorithm.graph.BFS;
 import org.cheplay.algorithm.graph.DFS;
+import org.cheplay.algorithm.greedy.GreedyExamples;
 import org.cheplay.algorithm.mst.Kruskal;
 import org.cheplay.algorithm.mst.Prim;
 import org.cheplay.algorithm.shortestpath.Dijkstra;
-import org.cheplay.algorithm.greedy.GreedyExamples;
-import org.cheplay.algorithm.dynamic.DynamicProgrammingExamples;
-import org.cheplay.algorithm.backtracking.BacktrackingExamples;
-import org.cheplay.algorithm.branchandbound.BranchAndBoundExamples;
-
+import org.cheplay.dto.AlgorithmRequest;
+import org.cheplay.neo4j.DynamicGraphAdapter;
 import org.springframework.stereotype.Service;
-
-import java.util.*;
 
 @Service
 public class AlgorithmService {
-    private final GraphService graphService;
+    private final DynamicGraphAdapter dynamicGraphAdapter;
 
-    public AlgorithmService(GraphService graphService) {
-        this.graphService = graphService;
+    public AlgorithmService(DynamicGraphAdapter dynamicGraphAdapter) {
+        this.dynamicGraphAdapter = dynamicGraphAdapter;
     }
 
-    public Object runBFS(String start) {
-        Map<String, Map<String, Double>> adj = graphService.buildAdjacencyMap();
-        return BFS.bfs(adj, start);
+    public Object runBFS(AlgorithmRequest req) {
+        Map<String, Map<String, Double>> adj = dynamicGraphAdapter.buildAdjacency(req);
+        List<String> order = BFS.bfs(adj, req.start);
+        return Map.of("order", order);
     }
 
-    public Object runDFS(String start) {
-        Map<String, Map<String, Double>> adj = graphService.buildAdjacencyMap();
+    public Object runDFS(AlgorithmRequest req) {
+        Map<String, Map<String, Double>> adj = dynamicGraphAdapter.buildAdjacency(req);
         List<String> order = new ArrayList<>();
-        DFS.dfs(start, adj, new HashSet<>(), order);
-        return order;
+        DFS.dfs(req.start, adj, new HashSet<>(), order);
+        return Map.of("order", order);
     }
 
-    public Object runDijkstra(String source) {
-        Map<String, Map<String, Double>> adj = graphService.buildAdjacencyMap();
-        return Dijkstra.dijkstra(adj, source);
+    public Object runDijkstra(AlgorithmRequest req) {
+        Map<String, Map<String, Double>> adj = dynamicGraphAdapter.buildAdjacency(req);
+        return Dijkstra.dijkstra(adj, req.start);
     }
 
-    public Object runPrim(String start) {
-        Map<String, Map<String, Double>> adj = graphService.buildAdjacencyMap();
-        return Prim.minimumSpanningTree(adj, start);
+    public Object runPrim(AlgorithmRequest req) {
+        Map<String, Map<String, Double>> adj = dynamicGraphAdapter.buildAdjacency(req);
+        return Prim.minimumSpanningTree(adj, req.start);
     }
 
-    public Object runKruskal() {
-        Map<String, Map<String, Double>> adj = graphService.buildAdjacencyMap();
+    public Object runKruskal(AlgorithmRequest req) {
+        Map<String, Map<String, Double>> adj = dynamicGraphAdapter.buildAdjacency(req);
         return Kruskal.minimumSpanningTree(adj);
     }
 

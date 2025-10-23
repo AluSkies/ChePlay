@@ -4,7 +4,10 @@ import org.cheplay.dto.AlgorithmRequest;
 import org.cheplay.dto.AlgorithmResponse;
 import org.cheplay.service.AlgorithmService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/algorithms")
@@ -19,7 +22,7 @@ public class AlgorithmController {
     public ResponseEntity<?> bfs(@RequestBody AlgorithmRequest req) {
         AlgorithmResponse res = new AlgorithmResponse();
         res.algorithm = "BFS";
-        res.result = algorithmService.runBFS(req.start);
+        res.result = algorithmService.runBFS(req);
         return ResponseEntity.ok(res);
     }
 
@@ -27,7 +30,7 @@ public class AlgorithmController {
     public ResponseEntity<?> dfs(@RequestBody AlgorithmRequest req) {
         AlgorithmResponse res = new AlgorithmResponse();
         res.algorithm = "DFS";
-        res.result = algorithmService.runDFS(req.start);
+        res.result = algorithmService.runDFS(req);
         return ResponseEntity.ok(res);
     }
 
@@ -35,7 +38,7 @@ public class AlgorithmController {
     public ResponseEntity<?> dijkstra(@RequestBody AlgorithmRequest req) {
         AlgorithmResponse res = new AlgorithmResponse();
         res.algorithm = "Dijkstra";
-        res.result = algorithmService.runDijkstra(req.start);
+        res.result = algorithmService.runDijkstra(req);
         return ResponseEntity.ok(res);
     }
 
@@ -43,15 +46,15 @@ public class AlgorithmController {
     public ResponseEntity<?> prim(@RequestBody AlgorithmRequest req) {
         AlgorithmResponse res = new AlgorithmResponse();
         res.algorithm = "Prim";
-        res.result = algorithmService.runPrim(req.start);
+        res.result = algorithmService.runPrim(req);
         return ResponseEntity.ok(res);
     }
 
     @PostMapping("/kruskal")
-    public ResponseEntity<?> kruskal() {
+    public ResponseEntity<?> kruskal(@RequestBody AlgorithmRequest req) {
         AlgorithmResponse res = new AlgorithmResponse();
         res.algorithm = "Kruskal";
-        res.result = algorithmService.runKruskal();
+        res.result = algorithmService.runKruskal(req);
         return ResponseEntity.ok(res);
     }
 
