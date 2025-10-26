@@ -59,20 +59,35 @@ public class AlgorithmService {
 
     public Object runQuickSort(List<Integer> numbers) {
         if (numbers == null) return Collections.emptyList();
-        List<Integer> copy = new ArrayList<>(numbers);
-        QuickSort.quicksort(copy, 0, copy.size() - 1);
-        return copy;
+        // Adapt to new QuickSort signature: expects LinkedHashMap<String,Integer>, sorts by value DESC
+        java.util.LinkedHashMap<String, Integer> map = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < numbers.size(); i++) map.put(String.valueOf(i), numbers.get(i));
+        java.util.LinkedHashMap<String, Integer> sorted = QuickSort.quicksort(map);
+        return new ArrayList<>(sorted.values());
     }
 
     public Object runMergeSort(List<Integer> numbers) {
         if (numbers == null) return Collections.emptyList();
-        List<Integer> copy = new ArrayList<>(numbers);
-        MergeSort.mergeSort(copy, 0, copy.size() - 1);
-        return copy;
+        // Adapt to new MergeSort signature: mergeSortByValue(Map<String,Integer>) returns LinkedHashMap sorted by value DESC
+        java.util.LinkedHashMap<String, Integer> map = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < numbers.size(); i++) map.put(String.valueOf(i), numbers.get(i));
+        java.util.LinkedHashMap<String, Integer> sorted = MergeSort.mergeSortByValue(map);
+        return new ArrayList<>(sorted.values());
     }
 
     public Object runGreedy(Map<String, Object> params) {
-        return GreedyExamples.coinChangeGreedy(params);
+        // Expecting params: { songs: Map<String,Integer>, k: int }
+        if (params == null) return List.of();
+        @SuppressWarnings("unchecked")
+        Map<String, Integer> songs = (Map<String, Integer>) params.get("songs");
+        Object kObj = params.get("k");
+        int k = (kObj instanceof Number) ? ((Number) kObj).intValue() : 0;
+        if (songs == null || songs.isEmpty() || k <= 0) return List.of();
+        List<Map.Entry<String, Integer>> top = GreedyExamples.topKGreedy(songs, k);
+        // Return as a lightweight list of maps for clean JSON
+        List<Map<String, Object>> out = new ArrayList<>(top.size());
+        for (Map.Entry<String, Integer> e : top) out.add(Map.of("id", e.getKey(), "plays", e.getValue()));
+        return out;
     }
 
     public Object runDynamic(Map<String, Object> params) {

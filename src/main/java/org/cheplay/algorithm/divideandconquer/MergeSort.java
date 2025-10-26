@@ -1,6 +1,9 @@
 package org.cheplay.algorithm.divideandconquer;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class MergeSort {
 
@@ -35,13 +38,26 @@ public class MergeSort {
         int i = 0, j = 0, k = 0;
 
         while (i < left.size() && j < right.size()) {
-            if (map.get(left.get(i)) <= map.get(right.get(j))) {
-                result.set(k++, left.get(i++));
-            } else {
-                result.set(k++, right.get(j++));
-            }
+        //cambio esto a órden descendente
+        Integer li = map.get(left.get(i));
+        Integer rj = map.get(right.get(j));
+        if (li == null) li = 0;
+        if (rj == null) rj = 0;
+
+        
+        if (li >= rj) {
+            result.set(k++, left.get(i++));
+        } else {
+            result.set(k++, right.get(j++));
         }
-        while (i < left.size()) result.set(k++, left.get(i++));
-        while (j < right.size()) result.set(k++, right.get(j++));
+        }
+
+        
+        while (i < left.size()) {
+            result.set(k++, left.get(i++));
+        }
+        while (j < right.size()) {
+            result.set(k++, right.get(j++));
+        }
     }
 }
