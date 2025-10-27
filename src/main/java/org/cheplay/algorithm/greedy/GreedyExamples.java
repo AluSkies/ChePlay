@@ -1,21 +1,38 @@
 package org.cheplay.algorithm.greedy;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.PriorityQueue;
 
 public class GreedyExamples {
-    public static Map<String, Object> coinChangeGreedy(Map<String, Object> params) {
-        int amount = (int) params.getOrDefault("amount", 0);
-        List<Integer> coins = (List<Integer>) params.getOrDefault("coins", Arrays.asList(25,10,5,1));
-        coins = new ArrayList<>(coins);
-        coins.sort(Comparator.reverseOrder());
-        Map<Integer, Integer> used = new LinkedHashMap<>();
-        for (int c : coins) {
-            int cnt = amount / c;
-            if (cnt > 0) {
-                used.put(c, cnt);
-                amount -= cnt * c;
+
+    /**
+     * @param songs  Map<songId, plays>
+     * @param k      número de canciones a devolver
+     * @return Lista ordenada descendentemente por plays (id, plays)
+     */
+    public static List<Map.Entry<String, Integer>> topKGreedy(Map<String, Integer> songs, int k) {
+        if (songs == null || songs.isEmpty() || k <= 0) return List.of();
+
+        // min-heap por cantidad de reproducciones
+        PriorityQueue<Map.Entry<String, Integer>> heap =
+                new PriorityQueue<>(Comparator.comparingInt(Map.Entry::getValue));
+
+        for (Map.Entry<String, Integer> entry : songs.entrySet()) {
+            if (heap.size() < k) {
+                heap.offer(entry);
+            } else if (entry.getValue() > heap.peek().getValue()) {
+                heap.poll();  // saco el menor
+                heap.offer(entry);
             }
         }
-        return Map.of("used", used, "remaining", amount);
+
+        // paso final: ordenar descendentemente el resultado
+        List<Map.Entry<String, Integer>> result = new ArrayList<>(heap);
+        result.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
+
+        return result;
     }
 }

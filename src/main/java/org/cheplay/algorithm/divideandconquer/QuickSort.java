@@ -1,26 +1,54 @@
 package org.cheplay.algorithm.divideandconquer;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Collections;
+import java.util.Map;
 
 public class QuickSort {
-    public static void quicksort(List<Integer> arr, int low, int high) {
-        if (low >= high) return;
-        int p = partition(arr, low, high);
-        quicksort(arr, low, p - 1);
-        quicksort(arr, p + 1, high);
+
+    public static LinkedHashMap<String, Integer> quicksort(LinkedHashMap<String, Integer> map) {
+        if (map == null || map.size() <= 1) return map == null ? new LinkedHashMap<>() : new LinkedHashMap<>(map);
+
+        // paso a lista porque es más mejor, más cool
+        List<Map.Entry<String, Integer>> entries = new ArrayList<>(map.entrySet());
+        List<Map.Entry<String, Integer>> sorted = quicksortEntries(entries);
+
+        //remap a LinkedHashMap para mantener el orden
+        LinkedHashMap<String, Integer> out = new LinkedHashMap<>();
+        for (Map.Entry<String, Integer> e : sorted) out.put(e.getKey(), e.getValue());
+        return out;
     }
 
-    private static int partition(List<Integer> arr, int low, int high) {
-        int pivot = arr.get(high);
-        int i = low;
-        for (int j = low; j < high; j++) {
-            if (arr.get(j) <= pivot) {
-                Collections.swap(arr, i, j);
-                i++;
-            }
+    private static List<Map.Entry<String, Integer>> quicksortEntries(List<Map.Entry<String, Integer>> entries) {
+        if (entries.size() <= 1) return entries;
+
+        int pivotIndex = entries.size() / 2;
+        Integer pivotValue = safe(entries.get(pivotIndex).getValue());
+
+        List<Map.Entry<String, Integer>> mayores = new ArrayList<>();
+        List<Map.Entry<String, Integer>> iguales  = new ArrayList<>();
+        List<Map.Entry<String, Integer>> menores = new ArrayList<>();
+
+        for (Map.Entry<String, Integer> e : entries) {
+            int v = safe(e.getValue());
+            if (v > pivotValue)      mayores.add(e);   // DESC: primero los mayores
+            else if (v == pivotValue) iguales.add(e);
+            else                      menores.add(e);
         }
-        Collections.swap(arr, i, high);
-        return i;
+
+        // recursión
+        List<Map.Entry<String, Integer>> left  = quicksortEntries(mayores);
+        List<Map.Entry<String, Integer>> mid   = iguales;            // ya está
+        List<Map.Entry<String, Integer>> right = quicksortEntries(menores);
+
+        // recombinar en orden DESC
+        List<Map.Entry<String, Integer>> res = new ArrayList<>(entries.size());
+        res.addAll(left);
+        res.addAll(mid);
+        res.addAll(right);
+        return res;
     }
+
+    private static int safe(Integer v) { return v == null ? 0 : v; }
 }

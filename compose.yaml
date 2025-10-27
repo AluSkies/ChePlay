@@ -1,7 +1,3 @@
-services:
-  neo4j:
-    image: 'neo4j:latest'
-    environment:
-      - 'NEO4J_AUTH=neo4j/S8esVU08T9zrH69I0g3B8QFg4XEN6zMNWejH9GYwQ80'
-    ports:
-      - '7687'
+# Deprecated: usando Neo4j AuraDB. No ejecutar Docker Compose.
+services: {}
+
