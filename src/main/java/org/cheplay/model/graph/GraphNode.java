@@ -1,11 +1,11 @@
-package org.cheplay.model;
+package org.cheplay.model.graph;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.data.neo4j.core.schema.Property;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @Node("Node")
 public class GraphNode {

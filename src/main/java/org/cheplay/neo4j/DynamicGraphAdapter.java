@@ -36,6 +36,8 @@ public class DynamicGraphAdapter {
             List<org.neo4j.driver.Record> rows;
             if ("bands".equalsIgnoreCase(graphType)) {
                 rows = runBandsQuery(session, minScore);
+            } else if ("songs_hybrid".equalsIgnoreCase(graphType)) {
+                rows = runSongsHybridQuery(session, req.params);
             } else {
                 rows = runMoviesQuery(session, minScore, platforms, onlyUserId);
             }
@@ -63,6 +65,44 @@ public class DynamicGraphAdapter {
         }
 
         return adj;
+    }
+
+    private List<org.neo4j.driver.Record> runSongsHybridQuery(Session session, Map<String, Object> params) {
+        String cypher = """
+            WITH toInteger($window) AS w, toFloat($lambda) AS lam
+            MATCH (u:User)-[:LIKED_SONG]->(s1:Song)
+            WITH u, s1
+            MATCH (u)-[:LIKED_SONG]->(s2:Song)
+            WHERE s1 <> s2
+            WITH s1, s2, count(DISTINCT u) AS overlap
+            WHERE overlap > 0
+            WITH (CASE WHEN id(s1) < id(s2) THEN s1 ELSE s2 END) AS a,
+                   (CASE WHEN id(s1) < id(s2) THEN s2 ELSE s1 END) AS b,
+                   overlap,
+                   coalesce(w,10) AS win,
+                   coalesce(lam,0.5) AS lam
+            WHERE a.year IS NOT NULL AND b.year IS NOT NULL
+            WITH a, b, overlap, lam, win, abs(a.year - b.year) AS d
+            WITH a, b,
+                 (1.0 / (overlap + 1.0)) AS w1,
+                 (toFloat(d) / toFloat(win)) AS w2,
+                 lam
+            RETURN a.id AS from, b.id AS to, (w1 + lam * w2) AS weight
+            """;
+
+        Map<String, Object> map = new HashMap<>();
+        if (params != null) {
+            Object w = params.get("window");
+            Object l = params.get("lambda");
+            if (w != null) map.put("window", w);
+            if (l != null) map.put("lambda", l);
+        }
+        // sensible defaults if not provided
+        map.putIfAbsent("window", 10);
+        map.putIfAbsent("lambda", 0.5);
+
+        Result result = session.run(cypher, map);
+        return result.list();
     }
 
     private List<org.neo4j.driver.Record> runMoviesQuery(Session session, double minScore, List<String> platforms, String onlyUserId) {

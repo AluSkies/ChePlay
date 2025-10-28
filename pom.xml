@@ -86,19 +86,7 @@
             <version>5.8.0</version>
         </dependency>
 
-        <!-- Testcontainers for Neo4j (test scope) -->
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>neo4j</artifactId>
-            <version>1.19.0</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>1.19.0</version>
-            <scope>test</scope>
-        </dependency>
+        <!-- Testcontainers removed: project uses Neo4j Aura (cloud) instead of Docker-based tests -->
     </dependencies>
 
     <build>

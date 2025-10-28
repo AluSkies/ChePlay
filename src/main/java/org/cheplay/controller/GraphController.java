@@ -1,12 +1,14 @@
 package org.cheplay.controller;
 
-import org.cheplay.model.GraphNode;
-import org.cheplay.service.GraphService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.HashMap;
 import java.util.Map;
+
+import org.cheplay.model.graph.GraphNode;
+import org.cheplay.service.GraphService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/graph")

@@ -1,4 +1,4 @@
-package org.cheplay.model;
+package org.cheplay.model.graph;
 
 public class GraphRelationship {
     private String id = java.util.UUID.randomUUID().toString();

@@ -1,6 +1,6 @@
 package org.cheplay.service;
 
-import org.cheplay.model.GraphNode;
+import org.cheplay.model.graph.GraphNode;
 import org.cheplay.repository.GraphNodeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
