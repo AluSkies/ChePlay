@@ -1,10 +1,10 @@
-package org.cheplay;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Assertions;
+package org.cheplay.AlgorithmTests;
 
 import java.lang.reflect.Method;
 import java.util.List;
+
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class AlgorithmIntegrationTest {
 

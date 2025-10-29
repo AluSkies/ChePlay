@@ -2,9 +2,12 @@ package org.cheplay.model.recommendation;
 
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.cheplay.algorithm.shortestpath.Dijkstra;
@@ -25,9 +28,11 @@ import org.springframework.stereotype.Service;
 public class FriendRecommendationService {
 
     private final DbConnector db;
+        private final FriendRecommendationMapper mapper;
 
-    public FriendRecommendationService(DbConnector db) {
+        public FriendRecommendationService(DbConnector db, FriendRecommendationMapper mapper) {
         this.db = Objects.requireNonNull(db, "DbConnector");
+                this.mapper = Objects.requireNonNull(mapper);
     }
 
     // Consulta global (puede usarse para construir el grafo completo)
@@ -71,26 +76,26 @@ public class FriendRecommendationService {
      * Devuelve los vecinos directos recomendados para un usuario (top-k) ordenados por peso ascendente
      * (peso = 1/(overlap+1) => menor peso = mayor overlap).
      */
-    public List<String> recommendDirectNeighbors(String userId, int k) {
+    public List<Map<String, Object>> recommendDirectNeighbors(String userId, int k) {
         if (userId == null) throw new IllegalArgumentException("userId is required");
         Map<String, Object> params = Map.of("userId", userId);
         List<Map.Entry<String, Double>> list = db.readList(USER_NEIGHBORS_CYPHER, params, (Record r) ->
                 Map.entry(r.get("neighbor").asString(), r.get("weight").asDouble())
         );
 
-        // readList returns List<Map.Entry<..>> — we sort by value then collect top-k keys
-        return list.stream()
+        List<Map.Entry<String, Double>> ranked = list.stream()
                 .sorted(Comparator.comparingDouble(Map.Entry::getValue))
                 .limit(k <= 0 ? Integer.MAX_VALUE : k)
-                .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
+
+        return mapper.decorateRankedUsers(ranked, "weight");
     }
 
     /**
      * Recomendación por distancia acumulada (Dijkstra) usando el grafo completo. Devuelve top-k usuarios
      * con menor distancia (excluye al propio userId).
      */
-    public List<String> recommendByShortestPath(String userId, int k) {
+    public List<Map<String, Object>> recommendByShortestPath(String userId, int k) {
                 if (userId == null) throw new IllegalArgumentException("userId is required");
                 Map<String, Map<String, Double>> adj = buildFullAdjacencyGraph();
 
@@ -102,19 +107,20 @@ public class FriendRecommendationService {
                 @SuppressWarnings("unchecked")
                 Map<String, Double> distances = (Map<String, Double>) res.get("distances");
 
-                return distances.entrySet().stream()
+                List<Map.Entry<String, Double>> ranked = distances.entrySet().stream()
                                 .filter(e -> !e.getKey().equals(sourceKey) && !Double.isInfinite(e.getValue()))
                                 .sorted(Map.Entry.comparingByValue())
                                 .limit(k <= 0 ? Integer.MAX_VALUE : k)
-                                .map(Map.Entry::getKey)
                                 .collect(Collectors.toList());
+
+                return mapper.decorateRankedUsers(ranked, "distance");
     }
 
         /**
          * Encuentra la persona más cercana al userId usando Dijkstra y devolviendo el único mejor candidato.
          * Retorna null si no hay ningún vecino alcanzable.
          */
-        public String findClosestUser(String userId) {
+        public Map<String, Object> findClosestUser(String userId) {
                 if (userId == null) throw new IllegalArgumentException("userId is required");
                 Map<String, Map<String, Double>> adj = buildFullAdjacencyGraph();
                 String sourceKey = resolveKey(adj, userId);
@@ -124,11 +130,13 @@ public class FriendRecommendationService {
                 @SuppressWarnings("unchecked")
                 Map<String, Double> distances = (Map<String, Double>) res.get("distances");
 
-                return distances.entrySet().stream()
+                Map.Entry<String, Double> best = distances.entrySet().stream()
                                 .filter(e -> !e.getKey().equals(sourceKey) && !Double.isInfinite(e.getValue()))
                                 .min(Map.Entry.comparingByValue())
-                                .map(Map.Entry::getKey)
                                 .orElse(null);
+
+                if (best == null) return null;
+                return mapper.decorateRankedUsers(List.of(best), "distance").stream().findFirst().orElse(null);
         }
 
         // Helper: try exact match, then case-insensitive match of keys in adjacency map
@@ -150,6 +158,11 @@ public class FriendRecommendationService {
                 String cypher = "MATCH (p:User) WHERE coalesce(p.id, p.nombre, p.name) IS NOT NULL " +
                                 "RETURN DISTINCT coalesce(p.id, p.nombre, p.name) AS key ORDER BY key";
                 return db.readList(cypher, null, (Record r) -> r.get("key").asString());
+        }
+
+        public List<Map<String, Object>> listUsersDecorated() {
+                List<String> keys = listUserKeys();
+                return mapper.decorateUsers(keys);
         }
 
             /**
@@ -207,5 +220,120 @@ public class FriendRecommendationService {
                                                 "songs", songs
                                 );
                         });
+                }
+
+                public Map<String, Object> debugUserData(String userId, int limit) {
+                        int cappedLimit = limit <= 0 ? 20 : Math.min(limit, 200);
+
+                        Map<String, Object> out = new HashMap<>();
+                        out.put("input", userId);
+
+                        String resolved = findUserKeyInDb(userId);
+                        out.put("resolvedKey", resolved);
+
+                        Map<String, Object> userNode = fetchUserNodeDetails(resolved != null ? resolved : userId);
+                        out.put("userNode", userNode);
+
+                        List<String> likedSongs = getUserLikedSongs(userId);
+                        out.put("likedSongs", likedSongs);
+
+                        List<Map<String, Object>> neighbors = getNeighborsWithOverlap(userId);
+                        out.put("neighborsCount", neighbors.size());
+                        out.put("neighbors", neighbors.stream().limit(cappedLimit).collect(Collectors.toList()));
+
+                        List<Map<String, Object>> neighborsWithSongs = getNeighborsWithSharedSongs(userId);
+                        out.put("neighborsWithSongsCount", neighborsWithSongs.size());
+                        out.put("neighborsWithSongs", neighborsWithSongs.stream().limit(cappedLimit).collect(Collectors.toList()));
+
+                        List<Map<String, Object>> direct = recommendDirectNeighbors(userId, cappedLimit);
+                        List<String> directIds = direct.stream().map(m -> (String) m.get("id")).collect(Collectors.toList());
+                        out.put("directRecommendations", direct);
+                        out.put("directCount", direct.size());
+
+                        Map<String, Map<String, Double>> adj = buildFullAdjacencyGraph();
+                        out.put("graphNodes", adj.size());
+                        out.put("graphEdges", adj.values().stream().mapToInt(Map::size).sum());
+                        out.put("allUserKeysSample", adj.keySet().stream().limit(cappedLimit).collect(Collectors.toList()));
+
+                        String sourceKey = resolveKey(adj, resolved != null ? resolved : userId);
+                        Map<String, Object> closest = null;
+                        List<Map<String, Object>> shortest = List.of();
+                        List<Map<String, Object>> edgeSample = List.of();
+                        int userNeighborCount = 0;
+
+                        if (sourceKey != null) {
+                                Map<String, Object> dijkstraRes = Dijkstra.dijkstra(adj, sourceKey);
+                                @SuppressWarnings("unchecked")
+                                Map<String, Double> distances = (Map<String, Double>) dijkstraRes.get("distances");
+
+                                List<Map.Entry<String, Double>> shortestEntries = distances.entrySet().stream()
+                                        .filter(e -> !e.getKey().equals(sourceKey) && !Double.isInfinite(e.getValue()))
+                                        .sorted(Map.Entry.comparingByValue())
+                                        .limit(cappedLimit)
+                                        .collect(Collectors.toList());
+
+                                shortest = mapper.decorateRankedUsers(shortestEntries, "distance");
+                                closest = shortest.isEmpty() ? null : shortest.get(0);
+
+                                Map<String, Double> userEdges = adj.getOrDefault(sourceKey, Map.of());
+                                userNeighborCount = userEdges.size();
+                                List<Map.Entry<String, Double>> edgeEntries = userEdges.entrySet().stream()
+                                        .sorted(Map.Entry.comparingByValue())
+                                        .limit(cappedLimit)
+                                        .collect(Collectors.toList());
+                                edgeSample = mapper.decorateRankedUsers(edgeEntries, "weight");
+                        }
+
+                        out.put("shortestRecommendations", shortest);
+                        out.put("shortestCount", shortest.size());
+                        out.put("closest", closest);
+                        out.put("userNeighborCount", userNeighborCount);
+                        out.put("userEdgeSample", edgeSample);
+
+                        Set<String> candidateUsers = new HashSet<>(adj.keySet());
+                        if (sourceKey != null) {
+                                candidateUsers.remove(sourceKey);
+                        }
+                        out.put("candidateUsersCount", candidateUsers.size());
+                        out.put("candidateUsersSample", candidateUsers.stream().limit(cappedLimit).collect(Collectors.toList()));
+
+                        Set<String> relevantNeighbors = new HashSet<>();
+                        relevantNeighbors.addAll(directIds);
+                        relevantNeighbors.addAll(shortest.stream().map(m -> (String) m.get("id")).collect(Collectors.toList()));
+                        Map<String, String> labelById = mapper.resolveLabels(relevantNeighbors);
+                        Map<String, List<String>> sharedSongs = new LinkedHashMap<>();
+                        for (Map<String, Object> entry : neighborsWithSongs) {
+                                Object nbObj = entry.get("neighbor");
+                                if (!(nbObj instanceof String neighbor)) continue;
+                                if (!relevantNeighbors.contains(neighbor)) continue;
+                                @SuppressWarnings("unchecked")
+                                List<String> songs = entry.get("songs") instanceof List ? (List<String>) entry.get("songs") : List.of();
+                                String label = labelById.getOrDefault(neighbor, neighbor);
+                                sharedSongs.put(label, songs);
+                        }
+                        out.put("sharedSongs", sharedSongs);
+
+                        out.put("shortestRecommendationsRaw", shortest.stream().map(m -> (String) m.get("id")).collect(Collectors.toList()));
+                        out.put("directRecommendationsRaw", directIds);
+
+                        return out;
+                }
+
+                private Map<String, Object> fetchUserNodeDetails(String userId) {
+                        if (userId == null) {
+                                return Map.of();
+                        }
+
+                        String cypher = "MATCH (p:User) WHERE toLower(coalesce(p.id,p.nombre,p.name)) = toLower($userId) " +
+                                "RETURN labels(p) AS labels, properties(p) AS props LIMIT 1";
+
+                        List<Map<String, Object>> rows = db.readList(cypher, Map.of("userId", userId), record -> {
+                                Map<String, Object> row = new HashMap<>();
+                                row.put("labels", record.get("labels").asList(v -> v.asString()));
+                                row.put("properties", record.get("props").asMap());
+                                return row;
+                        });
+
+                        return rows.isEmpty() ? Map.of() : rows.get(0);
                 }
 }

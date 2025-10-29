@@ -68,27 +68,32 @@ public class DynamicGraphAdapter {
     }
 
     private List<org.neo4j.driver.Record> runSongsHybridQuery(Session session, Map<String, Object> params) {
-        String cypher = """
-            WITH toInteger($window) AS w, toFloat($lambda) AS lam
-            MATCH (u:User)-[:LIKED_SONG]->(s1:Song)
-            WITH u, s1
-            MATCH (u)-[:LIKED_SONG]->(s2:Song)
-            WHERE s1 <> s2
-            WITH s1, s2, count(DISTINCT u) AS overlap
-            WHERE overlap > 0
-            WITH (CASE WHEN id(s1) < id(s2) THEN s1 ELSE s2 END) AS a,
-                   (CASE WHEN id(s1) < id(s2) THEN s2 ELSE s1 END) AS b,
-                   overlap,
-                   coalesce(w,10) AS win,
-                   coalesce(lam,0.5) AS lam
-            WHERE a.year IS NOT NULL AND b.year IS NOT NULL
-            WITH a, b, overlap, lam, win, abs(a.year - b.year) AS d
-            WITH a, b,
-                 (1.0 / (overlap + 1.0)) AS w1,
-                 (toFloat(d) / toFloat(win)) AS w2,
-                 lam
-            RETURN a.id AS from, b.id AS to, (w1 + lam * w2) AS weight
-            """;
+     String cypher = """
+         WITH toInteger($window) AS w, toFloat($lambda) AS lam
+         MATCH (u:User)-[:LISTENED]->(s1:Song)
+         WITH u, s1, w, lam
+         MATCH (u)-[:LISTENED]->(s2:Song)
+         WHERE s1 <> s2
+         WITH s1, s2, count(DISTINCT u) AS overlap, w, lam
+                 WHERE overlap > 0
+                 WITH (CASE WHEN id(s1) < id(s2) THEN s1 ELSE s2 END) AS a,
+             (CASE WHEN id(s1) < id(s2) THEN s2 ELSE s1 END) AS b,
+             overlap,
+             coalesce(w,10) AS win,
+             coalesce(lam,0.5) AS lam
+                 WITH a, b, overlap, lam, win,
+                            CASE
+                                    WHEN a.year IS NULL OR b.year IS NULL THEN 0.0
+                                    ELSE abs(toFloat(a.year) - toFloat(b.year))
+                            END AS d
+                 WITH a, b,
+                     (1.0 / (overlap + 1.0)) AS w1,
+                     (CASE WHEN win = 0 THEN 0 ELSE (toFloat(d) / toFloat(win)) END) AS w2,
+                     lam
+         RETURN coalesce(a.id, a.name, a.title) AS from,
+             coalesce(b.id, b.name, b.title) AS to,
+             (w1 + lam * w2) AS weight
+         """;
 
         Map<String, Object> map = new HashMap<>();
         if (params != null) {

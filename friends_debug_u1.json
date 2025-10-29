@@ -1,0 +1,100 @@
+{
+  "directCount": 1,
+  "shortestRecommendations": [
+    {
+      "distance": 0.5,
+      "name": "Gus",
+      "id": "u2",
+      "label": "u2 - Gus",
+      "username": "gus"
+    }
+  ],
+  "shortestCount": 1,
+  "shortestRecommendationsRaw": [
+    "u2"
+  ],
+  "userNeighborCount": 1,
+  "candidateUsersCount": 1,
+  "graphNodes": 2,
+  "resolvedKey": "u1",
+  "neighborsWithSongs": [
+    {
+      "neighbor": "u2",
+      "weight": 0.5,
+      "overlap": 1,
+      "songs": [
+        "s_pj_01"
+      ]
+    }
+  ],
+  "graphEdges": 2,
+  "candidateUsersSample": [
+    "u2"
+  ],
+  "input": "u1",
+  "directRecommendations": [
+    {
+      "name": "Gus",
+      "weight": 0.5,
+      "id": "u2",
+      "label": "u2 - Gus",
+      "username": "gus"
+    }
+  ],
+  "directRecommendationsRaw": [
+    "u2"
+  ],
+  "userNode": {
+    "properties": {
+      "name": "Alan",
+      "password": "alan123",
+      "id": "u1",
+      "username": "alan"
+    },
+    "labels": [
+      "User"
+    ]
+  },
+  "neighbors": [
+    {
+      "weight": 0.5,
+      "neighbor": "u2",
+      "overlap": 1
+    }
+  ],
+  "neighborsWithSongsCount": 1,
+  "allUserKeysSample": [
+    "u1",
+    "u2"
+  ],
+  "userEdgeSample": [
+    {
+      "name": "Gus",
+      "weight": 0.5,
+      "id": "u2",
+      "label": "u2 - Gus",
+      "username": "gus"
+    }
+  ],
+  "likedSongs": [
+    "s_bl_01",
+    "s_cr_01",
+    "s_nv_01",
+    "s_pj_01",
+    "s_rh_03",
+    "s_sp_01"
+  ],
+  "neighborsCount": 1,
+  "closest": {
+    "distance": 0.5,
+    "name": "Gus",
+    "id": "u2",
+    "label": "u2 - Gus",
+    "username": "gus"
+  },
+  "sharedSongs": {
+    "u2 - Gus": [
+      "s_pj_01"
+    ]
+  }
+}

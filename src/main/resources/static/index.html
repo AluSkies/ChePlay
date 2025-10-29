@@ -1,15 +1,217 @@
 <!doctype html>
-<html>
+<html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <title>ChePlay Algorithms</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recomendaciones — ChePlay</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; margin: 20px; }
+    .controls { margin-bottom: 12px; }
+    .node { display:inline-block; padding:10px 16px; border-radius:24px; background:#2b8; color:#fff; margin:8px; }
+    .edge { margin: 8px; color:#666 }
+    #graph { margin-top:16px; }
+  </style>
 </head>
 <body>
-  <h1>ChePlay Algorithms</h1>
-  <button onclick="createSample()">Create sample graph</button>
-  <button onclick="runBFS()">Run BFS from A</button>
-  <button onclick="runDijkstra()">Run Dijkstra from A</button>
-  <div id="output" style="white-space:pre-wrap;margin-top:1rem;"></div>
-  <script src="/js/app.js"></script>
+  <h2>Recomendación de amigos (visual)</h2>
+    <div class="controls">
+      <label>Usuario: <select id="user"></select></label>
+      <label>K: <input id="k" type="number" value="5" style="width:64px"/></label>
+      <button id="go">Obtener</button>
+      <!-- song recommendations controls (Prim only) -->
+      <button id="songsGo">Recomendar canciones (Prim)</button>
+    </div>
+
+  <div id="result">
+    <p><strong>Directas:</strong> <span id="direct">—</span></p>
+    <p><strong>Por camino (corto):</strong> <span id="shortest">—</span></p>
+    <p><strong>Más cercano:</strong> <span id="closest">—</span></p>
+  </div>
+
+  <div id="songResults" style="margin-top:18px">
+    <h3>Recomendaciones de canciones</h3>
+    <div id="songsLoading" style="display:none">Cargando canciones...</div>
+    <ul id="songsList"></ul>
+  </div>
+
+  <div id="trending" style="margin-top:18px">
+    <h3>Trending global</h3>
+    <button id="trendingRefresh">Actualizar trending</button>
+    <div id="trendingLoading" style="display:none">Cargando trending...</div>
+    <ul id="trendingList"></ul>
+  </div>
+
+  <div id="graph"></div>
+
+  <script>
+    function formatUserList(list) {
+      if (!Array.isArray(list) || list.length === 0) return '—';
+      return list.map(item => formatUser(item)).join(', ');
+    }
+
+    function formatUser(item) {
+      if (!item) return '—';
+      if (typeof item === 'string') return item;
+      return item.label || item.name || item.id || '—';
+    }
+
+    async function fetchUsers() {
+      const res = await fetch('/api/recommendations/users');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const list = await res.json();
+      const sel = document.getElementById('user');
+      sel.innerHTML = '';
+      // list may be an array or an object with value field depending on the controller
+      const users = Array.isArray(list) ? list : (list.value || list);
+      users.forEach(u => {
+        const opt = document.createElement('option');
+        if (u && typeof u === 'object') {
+          const value = u.id || u.value || '';
+          opt.value = value;
+          opt.textContent = u.label || u.name || u.username || value;
+        } else {
+          opt.value = u;
+          opt.textContent = u;
+        }
+        sel.appendChild(opt);
+      });
+      // set default
+      if (sel.options.length > 0) sel.value = sel.options[0].value;
+    }
+
+    async function fetchRec(user, k) {
+      const res = await fetch(`/api/recommendations/closest?user=${encodeURIComponent(user)}&k=${k}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    }
+
+    async function fetchSongRec(user, k, window, lambda) {
+      let qs = `user=${encodeURIComponent(user)}&k=${k}`;
+      if (window != null) qs += `&window=${encodeURIComponent(window)}`;
+      if (lambda != null) qs += `&lambda=${encodeURIComponent(lambda)}`;
+      const res = await fetch(`/api/recommendations/songs?${qs}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    }
+
+    async function fetchTrending(k, platforms) {
+      const params = new URLSearchParams();
+      params.set('k', k);
+      if (platforms && platforms.length) {
+        params.set('platforms', platforms.join(','));
+      }
+      const res = await fetch(`/api/trending/global?${params.toString()}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    }
+
+    function render(resp) {
+  document.getElementById('direct').textContent = formatUserList(resp.directRecommendations);
+  document.getElementById('shortest').textContent = formatUserList(resp.shortestPathRecommendations);
+  document.getElementById('closest').textContent = formatUser(resp.closest);
+
+      const graph = document.getElementById('graph');
+      graph.innerHTML = '';
+      const select = document.getElementById('user');
+      const selectedOption = select && select.selectedIndex >= 0 ? select.options[select.selectedIndex] : null;
+      const userLabel = selectedOption ? selectedOption.textContent : resp.user;
+  const closestObj = resp.closest;
+  const closestId = closestObj && closestObj.id;
+  const closestLabel = formatUser(closestObj);
+
+      // Render simple visual: user node and closest node, connect if appears in direct recommendations
+      const u = document.createElement('div'); u.className='node'; u.textContent = userLabel;
+      graph.appendChild(u);
+
+      if (closestId && closestLabel && closestLabel !== '—') {
+        const v = document.createElement('div'); v.className='node'; v.textContent = closestLabel; v.style.background='#28f';
+        graph.appendChild(v);
+
+        // edge
+        const edge = document.createElement('div'); edge.className='edge';
+        const isDirect = Array.isArray(resp.directRecommendations) && resp.directRecommendations.some(item => item && item.id === closestId);
+        edge.textContent = isDirect ? 'Conexión directa' : 'Conexión por camino más corto';
+        graph.appendChild(edge);
+      }
+    }
+
+    function renderTrending(items) {
+      const list = document.getElementById('trendingList');
+      list.innerHTML = '';
+      if (!items || items.length === 0) {
+        list.innerHTML = '<li>No hay datos</li>';
+        return;
+      }
+      items.forEach((item, idx) => {
+        const li = document.createElement('li');
+        const title = item.title || item.songId || 'Desconocido';
+        const artist = item.artist ? ` — ${item.artist}` : '';
+        li.textContent = `${idx + 1}. ${title}${artist} (${item.plays} plays)`;
+        list.appendChild(li);
+      });
+    }
+
+    document.getElementById('go').addEventListener('click', async () => {
+      const user = document.getElementById('user').value.trim();
+      const k = parseInt(document.getElementById('k').value, 10) || 5;
+      try {
+        document.getElementById('closest').textContent = 'Cargando...';
+        const resp = await fetchRec(user, k);
+        render(resp);
+      } catch (err) {
+        alert('Error: ' + err.message);
+        console.error(err);
+      }
+    });
+
+    document.getElementById('songsGo').addEventListener('click', async () => {
+      const user = document.getElementById('user').value.trim();
+      const k = parseInt(document.getElementById('k').value, 10) || 5;
+      try {
+        document.getElementById('songsLoading').style.display = 'block';
+        document.getElementById('songsList').innerHTML = '';
+        // optional: window and lambda could be exposed in UI; use defaults for now
+        const resp = await fetchSongRec(user, k, null, null);
+        document.getElementById('songsLoading').style.display = 'none';
+        const list = document.getElementById('songsList');
+        if (!resp || resp.length === 0) {
+          list.innerHTML = '<li>No hay recomendaciones</li>';
+          return;
+        }
+        for (const item of resp) {
+          const li = document.createElement('li');
+          const label = item.label || [item.artist, item.title].filter(Boolean).join(' - ') || item.id;
+          const score = (typeof item.score === 'number') ? item.score.toFixed(3).replace(/\.000$/, '') : item.score;
+          li.textContent = `${label} (score: ${score})`;
+          list.appendChild(li);
+        }
+      } catch (err) {
+        document.getElementById('songsLoading').style.display = 'none';
+        alert('Error al obtener canciones: ' + err.message);
+        console.error(err);
+      }
+    });
+
+    async function loadTrending() {
+      try {
+        document.getElementById('trendingLoading').style.display = 'block';
+        const list = await fetchTrending(10, null);
+        document.getElementById('trendingLoading').style.display = 'none';
+        renderTrending(list);
+      } catch (err) {
+        document.getElementById('trendingLoading').style.display = 'none';
+        console.error('Error al obtener trending', err);
+        document.getElementById('trendingList').innerHTML = '<li>Error al cargar trending</li>';
+      }
+    }
+
+    document.getElementById('trendingRefresh').addEventListener('click', loadTrending);
+
+    // Load users on startup
+    (async () => {
+      try { await fetchUsers(); } catch (e) { console.warn('No users list', e); }
+      await loadTrending();
+    })();
+  </script>
 </body>
 </html>

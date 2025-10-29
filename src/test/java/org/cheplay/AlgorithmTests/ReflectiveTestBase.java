@@ -1,4 +1,4 @@
-package org.cheplay;
+package org.cheplay.AlgorithmTests;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;

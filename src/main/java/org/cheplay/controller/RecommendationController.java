@@ -29,9 +29,9 @@ public class RecommendationController {
     @GetMapping(value = "/closest", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Object> closest(@RequestParam("user") String user,
                                        @RequestParam(value = "k", defaultValue = "10") int k) {
-    List<String> direct = service.recommendDirectNeighbors(user, k);
-    List<String> shortest = service.recommendByShortestPath(user, k);
-    String closest = service.findClosestUser(user);
+    List<Map<String, Object>> direct = service.recommendDirectNeighbors(user, k);
+    List<Map<String, Object>> shortest = service.recommendByShortestPath(user, k);
+    Map<String, Object> closest = service.findClosestUser(user);
 
     // Use a mutable map to tolerate null values (closest may be null)
     Map<String, Object> out = new java.util.HashMap<>();
@@ -42,8 +42,18 @@ public class RecommendationController {
 
         // Build a map neighbor -> shared songs (for the union of recommended neighbors)
         java.util.Set<String> neighbors = new java.util.HashSet<>();
-        if (direct != null) neighbors.addAll(direct);
-        if (shortest != null) neighbors.addAll(shortest);
+        if (direct != null) {
+            for (Map<String, Object> item : direct) {
+                Object id = item.get("id");
+                if (id instanceof String s) neighbors.add(s);
+            }
+        }
+        if (shortest != null) {
+            for (Map<String, Object> item : shortest) {
+                Object id = item.get("id");
+                if (id instanceof String s) neighbors.add(s);
+            }
+        }
 
         List<Map<String, Object>> neighborsWithSongs = service.getNeighborsWithSharedSongs(user);
         Map<String, List<String>> sharedSongs = new java.util.HashMap<>();
@@ -65,26 +75,17 @@ public class RecommendationController {
      * Devuelve la lista de claves de usuario que el servicio usa como identificador.
      */
     @GetMapping(value = "/users", produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<String> users() {
-        return service.listUserKeys();
+    public List<Map<String, Object>> users() {
+        return service.listUsersDecorated();
     }
 
     /**
-     * Endpoint de depuración: devuelve la clave resuelta del usuario, las canciones que marcó LIKED_SONG,
-     * y la lista de vecinos con overlap (número de canciones en común) y peso.
+     * Endpoint de depuración extendido: expone información de usuario, vecinos y grafo LIKED_SONG.
      */
     @GetMapping(value = "/debug", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Map<String, Object> debug(@RequestParam("user") String user) {
-        String resolved = service.findUserKeyInDb(user);
-        List<String> songs = service.getUserLikedSongs(user);
-        List<Map<String, Object>> neighbors = service.getNeighborsWithOverlap(user);
-
-        Map<String, Object> out = new java.util.HashMap<>();
-        out.put("input", user);
-        out.put("resolvedKey", resolved);
-        out.put("likedSongs", songs);
-        out.put("neighbors", neighbors);
-        return out;
+    public Map<String, Object> debug(@RequestParam("user") String user,
+                                     @RequestParam(value = "limit", defaultValue = "20") int limit) {
+        return service.debugUserData(user, limit);
     }
 
     @GetMapping(value = "/songs", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -94,5 +95,11 @@ public class RecommendationController {
                                                     @RequestParam(value = "lambda", required = false) Double lambda) {
         // Use Prim-based recommendations exclusively (MST backbone + distances on the tree).
         return songService.recommendForUserUsingPrim(user, k, window, lambda);
+    }
+
+    @GetMapping(value = "/songs/debug", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Map<String, Object> debugSongs(@RequestParam("user") String user,
+                                          @RequestParam(value = "limit", defaultValue = "20") int limit) {
+        return songService.debugListenedData(user, limit);
     }
 }
