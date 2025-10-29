@@ -41,6 +41,65 @@
     <ul id="trendingList"></ul>
   </div>
 
+  <hr style="margin:32px 0"/>
+
+  <h2>Recomendaciones de películas</h2>
+  <div class="controls">
+    <label>Usuario: <select id="movieUser"></select></label>
+    <label>K: <input id="movieK" type="number" value="5" style="width:64px"/></label>
+    <label>Algoritmo:
+      <select id="movieAlgorithm">
+        <option value="bfs">BFS (Amplitud)</option>
+        <option value="dfs">DFS (Profundidad)</option>
+        <option value="diverse">Kruskal (Diverso)</option>
+        <option value="sorted">MergeSort</option>
+      </select>
+    </label>
+    <button id="movieGo">Recomendar películas</button>
+  </div>
+
+  <div id="movieResults" style="margin-top:18px">
+    <h3>Películas recomendadas</h3>
+    <div id="moviesLoading" style="display:none">Cargando...</div>
+    <ul id="moviesList"></ul>
+  </div>
+
+  <hr style="margin:32px 0"/>
+
+  <h2>Planificador de maratón de películas</h2>
+  <div class="controls">
+    <label>Usuario: <select id="marathonUser"></select></label>
+    <label>Duración (min): <input id="marathonTime" type="number" value="360" style="width:80px"/></label>
+    <label>Rating mínimo: <input id="marathonRating" type="number" value="3.5" step="0.5" style="width:60px"/></label>
+    <label>Algoritmo:
+      <select id="marathonAlgorithm">
+        <option value="dp">Dynamic Programming</option>
+        <option value="branchandbound">Branch & Bound</option>
+      </select>
+    </label>
+    <button id="marathonGo">Planificar maratón</button>
+  </div>
+
+  <div id="marathonResults" style="margin-top:18px">
+    <h3>Plan de maratón</h3>
+    <div id="marathonLoading" style="display:none">Planificando...</div>
+    <div id="marathonPlan"></div>
+  </div>
+
+  <hr style="margin:32px 0"/>
+
+  <h2>Películas en tendencia</h2>
+  <div class="controls">
+    <label>K: <input id="movieTrendingK" type="number" value="10" style="width:64px"/></label>
+    <button id="movieTrendingGo">Ver trending</button>
+  </div>
+
+  <div id="movieTrendingResults" style="margin-top:18px">
+    <h3>Top películas</h3>
+    <div id="movieTrendingLoading" style="display:none">Cargando...</div>
+    <ul id="movieTrendingList"></ul>
+  </div>
+
   <div id="graph"></div>
 
   <script>
@@ -207,9 +266,146 @@
 
     document.getElementById('trendingRefresh').addEventListener('click', loadTrending);
 
-    // Load users on startup
+    // Movie Recommendations
+    async function fetchMovieRecommendations(user, k, algorithm) {
+      const res = await fetch(`/api/movies/recommendations/${algorithm}?user=${encodeURIComponent(user)}&k=${k}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    }
+
+    document.getElementById('movieGo').addEventListener('click', async () => {
+      const user = document.getElementById('movieUser').value.trim();
+      const k = parseInt(document.getElementById('movieK').value, 10) || 5;
+      const algorithm = document.getElementById('movieAlgorithm').value;
+      try {
+        document.getElementById('moviesLoading').style.display = 'block';
+        document.getElementById('moviesList').innerHTML = '';
+        const movies = await fetchMovieRecommendations(user, k, algorithm);
+        document.getElementById('moviesLoading').style.display = 'none';
+        const list = document.getElementById('moviesList');
+        if (!movies || movies.length === 0) {
+          list.innerHTML = '<li>No hay recomendaciones</li>';
+          return;
+        }
+        for (const movie of movies) {
+          const li = document.createElement('li');
+          const title = movie.title || movie.id;
+          const genre = movie.genre ? ` [${movie.genre}]` : '';
+          const year = movie.year ? ` (${movie.year})` : '';
+          const score = movie.score != null ? movie.score.toFixed(3) : 'N/A';
+          li.textContent = `${title}${genre}${year} - Score: ${score}`;
+          list.appendChild(li);
+        }
+      } catch (err) {
+        document.getElementById('moviesLoading').style.display = 'none';
+        alert('Error al obtener recomendaciones: ' + err.message);
+        console.error(err);
+      }
+    });
+
+    // Marathon Planning
+    async function fetchMarathonPlan(user, totalMinutes, minRating, algorithm) {
+      const res = await fetch(`/api/movies/marathon/quick?user=${encodeURIComponent(user)}&totalMinutes=${totalMinutes}&minRating=${minRating}&algorithm=${algorithm}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    }
+
+    document.getElementById('marathonGo').addEventListener('click', async () => {
+      const user = document.getElementById('marathonUser').value.trim();
+      const totalMinutes = parseInt(document.getElementById('marathonTime').value, 10) || 360;
+      const minRating = parseFloat(document.getElementById('marathonRating').value) || 3.5;
+      const algorithm = document.getElementById('marathonAlgorithm').value;
+      try {
+        document.getElementById('marathonLoading').style.display = 'block';
+        document.getElementById('marathonPlan').innerHTML = '';
+        const plan = await fetchMarathonPlan(user, totalMinutes, minRating, algorithm);
+        document.getElementById('marathonLoading').style.display = 'none';
+        const planDiv = document.getElementById('marathonPlan');
+        if (!plan.movies || plan.movies.length === 0) {
+          planDiv.innerHTML = '<p>No se encontraron películas para el maratón</p>';
+          return;
+        }
+        const summary = `<p><strong>Algoritmo:</strong> ${plan.algorithm}</p>
+          <p><strong>Duración total:</strong> ${plan.totalDuration} minutos (${(plan.totalDuration/60).toFixed(1)} horas)</p>
+          <p><strong>Rating promedio:</strong> ${plan.averageRating.toFixed(2)}</p>
+          <p><strong>Películas (${plan.movies.length}):</strong></p>`;
+        const list = document.createElement('ul');
+        for (const movie of plan.movies) {
+          const li = document.createElement('li');
+          const title = movie.title || movie.movieId;
+          const genre = movie.genre ? ` [${movie.genre}]` : '';
+          const duration = movie.duration ? ` - ${movie.duration} min` : '';
+          const rating = movie.rating != null ? ` - Rating: ${movie.rating.toFixed(1)}` : '';
+          li.textContent = `${title}${genre}${duration}${rating}`;
+          list.appendChild(li);
+        }
+        planDiv.innerHTML = summary;
+        planDiv.appendChild(list);
+      } catch (err) {
+        document.getElementById('marathonLoading').style.display = 'none';
+        alert('Error al planificar maratón: ' + err.message);
+        console.error(err);
+      }
+    });
+
+    // Movie Trending
+    async function fetchMovieTrending(k) {
+      const res = await fetch(`/api/movies/trending/global?k=${k}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    }
+
+    document.getElementById('movieTrendingGo').addEventListener('click', async () => {
+      const k = parseInt(document.getElementById('movieTrendingK').value, 10) || 10;
+      try {
+        document.getElementById('movieTrendingLoading').style.display = 'block';
+        document.getElementById('movieTrendingList').innerHTML = '';
+        const movies = await fetchMovieTrending(k);
+        document.getElementById('movieTrendingLoading').style.display = 'none';
+        const list = document.getElementById('movieTrendingList');
+        if (!movies || movies.length === 0) {
+          list.innerHTML = '<li>No hay datos</li>';
+          return;
+        }
+        for (let i = 0; i < movies.length; i++) {
+          const movie = movies[i];
+          const li = document.createElement('li');
+          const title = movie.title || movie.movieId;
+          const genre = movie.genre ? ` [${movie.genre}]` : '';
+          const watches = movie.watchCount || 0;
+          li.textContent = `${i+1}. ${title}${genre} - ${watches} views`;
+          list.appendChild(li);
+        }
+      } catch (err) {
+        document.getElementById('movieTrendingLoading').style.display = 'none';
+        alert('Error al cargar trending: ' + err.message);
+        console.error(err);
+      }
+    });
+
+    // Load users on startup and populate movie dropdowns
     (async () => {
-      try { await fetchUsers(); } catch (e) { console.warn('No users list', e); }
+      try { 
+        await fetchUsers(); 
+        // Populate movie user selects
+        const mainUserSelect = document.getElementById('user');
+        const movieUserSelect = document.getElementById('movieUser');
+        const marathonUserSelect = document.getElementById('marathonUser');
+        
+        if (mainUserSelect.options.length > 0) {
+          for (let i = 0; i < mainUserSelect.options.length; i++) {
+            const opt1 = document.createElement('option');
+            opt1.value = mainUserSelect.options[i].value;
+            opt1.textContent = mainUserSelect.options[i].textContent;
+            movieUserSelect.appendChild(opt1);
+            
+            const opt2 = document.createElement('option');
+            opt2.value = mainUserSelect.options[i].value;
+            opt2.textContent = mainUserSelect.options[i].textContent;
+            marathonUserSelect.appendChild(opt2);
+          }
+        }
+      } catch (e) { console.warn('No users list', e); }
       await loadTrending();
     })();
   </script>

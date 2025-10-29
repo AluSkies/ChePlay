@@ -38,6 +38,14 @@ public class DynamicGraphAdapter {
                 rows = runBandsQuery(session, minScore);
             } else if ("songs_hybrid".equalsIgnoreCase(graphType)) {
                 rows = runSongsHybridQuery(session, req.params);
+            } else if ("movies_by_users".equalsIgnoreCase(graphType)) {
+                rows = runMoviesByUsersQuery(session);
+            } else if ("movies_rated".equalsIgnoreCase(graphType)) {
+                rows = runMoviesRatedQuery(session);
+            } else if ("movies_genre".equalsIgnoreCase(graphType)) {
+                String genre = req.params != null ? 
+                    (String) req.params.get("genre") : null;
+                rows = runMoviesGenreQuery(session, genre);
             } else {
                 rows = runMoviesQuery(session, minScore, platforms, onlyUserId);
             }
@@ -138,6 +146,56 @@ public class DynamicGraphAdapter {
             RETURN a.name AS from, b.name AS to, 1.0 / (r.score + 1.0) AS weight
             """;
         Map<String, Object> params = Map.of("minScore", minScore);
+        Result result = session.run(cypher, params);
+        return result.list();
+    }
+
+    private List<org.neo4j.driver.Record> runMoviesByUsersQuery(Session session) {
+        String cypher = """
+            MATCH (u:User)-[:WATCHED]->(m1:Movie)
+            WITH u, m1
+            MATCH (u)-[:WATCHED]->(m2:Movie)
+            WHERE m1 <> m2
+            WITH m1, m2, count(DISTINCT u) AS overlap
+            WHERE overlap > 0
+            RETURN coalesce(m1.id, m1.title) AS from,
+                   coalesce(m2.id, m2.title) AS to,
+                   1.0 / (overlap + 1.0) AS weight
+            """;
+        Result result = session.run(cypher);
+        return result.list();
+    }
+
+    private List<org.neo4j.driver.Record> runMoviesRatedQuery(Session session) {
+        String cypher = """
+            MATCH (m1:Movie)<-[r1:RATED]-(u:User)-[r2:RATED]->(m2:Movie)
+            WHERE m1 <> m2
+            WITH m1, m2, avg(r1.rating) AS avg1, avg(r2.rating) AS avg2
+            WHERE avg1 IS NOT NULL AND avg2 IS NOT NULL
+            WITH m1, m2, abs(avg1 - avg2) AS ratingDiff
+            RETURN coalesce(m1.id, m1.title) AS from,
+                   coalesce(m2.id, m2.title) AS to,
+                   ratingDiff + 0.1 AS weight
+            """;
+        Result result = session.run(cypher);
+        return result.list();
+    }
+
+    private List<org.neo4j.driver.Record> runMoviesGenreQuery(Session session, String genre) {
+        String cypher = """
+            MATCH (m1:Movie), (m2:Movie)
+            WHERE m1 <> m2
+              AND ($genre IS NULL OR m1.genre = $genre)
+              AND ($genre IS NULL OR m2.genre = $genre)
+              AND m1.genre = m2.genre
+            OPTIONAL MATCH (m1)-[r:SIMILAR_TO]-(m2)
+            WITH m1, m2, coalesce(r.score, 0.5) AS similarity
+            RETURN coalesce(m1.id, m1.title) AS from,
+                   coalesce(m2.id, m2.title) AS to,
+                   1.0 / (similarity + 1.0) AS weight
+            LIMIT 1000
+            """;
+        Map<String, Object> params = Map.of("genre", genre != null ? genre : "");
         Result result = session.run(cypher, params);
         return result.list();
     }

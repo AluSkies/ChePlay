@@ -35,23 +35,38 @@ public class FriendRecommendationServiceTest {
         );
 
         // Stub DbConnector.readList: when params is null -> return globalEdges; otherwise return neighbors
-        when(db.readList(anyString(), isNull(), any())).thenReturn((List) globalEdges);
+        when(db.readList(anyString(), isNull(), any())).thenReturn((List<Object>) (List<?>) globalEdges);
         when(db.readList(anyString(), anyMap(), any())).thenAnswer(inv -> {
-            Map params = inv.getArgument(1);
+            Map<String, Object> params = inv.getArgument(1);
             if (params != null && "Alan".equals(params.get("userId"))) {
-                return (List) alanNeighbors;
+                return (List<Object>) (List<?>) alanNeighbors;
             }
-            return (List) globalEdges;
+            return (List<Object>) (List<?>) globalEdges;
         });
 
-        FriendRecommendationService svc = new FriendRecommendationService(db);
+        // Create mock mapper
+        FriendRecommendationMapper mapper = mock(FriendRecommendationMapper.class);
+        
+        // Mock mapper.decorateRankedUsers to return simple list format
+        when(mapper.decorateRankedUsers(any(), anyString())).thenAnswer(inv -> {
+            List<Map.Entry<String, Double>> entries = inv.getArgument(0);
+            return entries.stream()
+                .map(e -> Map.of("id", (Object) e.getKey(), "weight", (Object) e.getValue()))
+                .toList();
+        });
+
+        FriendRecommendationService svc = new FriendRecommendationService(db, mapper);
 
         // Direct neighbors for Alan
-        List<String> direct = svc.recommendDirectNeighbors("Alan", 10);
-        assertEquals(List.of("Bob", "Carol"), direct);
+        List<Map<String, Object>> direct = svc.recommendDirectNeighbors("Alan", 10);
+        assertEquals(2, direct.size());
+        assertEquals("Bob", direct.get(0).get("id"));
+        assertEquals("Carol", direct.get(1).get("id"));
 
         // Shortest-path based recommendations for Alan
-        List<String> viaPaths = svc.recommendByShortestPath("Alan", 10);
-        assertEquals(List.of("Bob", "Carol"), viaPaths);
+        List<Map<String, Object>> viaPaths = svc.recommendByShortestPath("Alan", 10);
+        assertEquals(2, viaPaths.size());
+        assertEquals("Bob", viaPaths.get(0).get("id"));
+        assertEquals("Carol", viaPaths.get(1).get("id"));
     }
 }
