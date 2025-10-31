@@ -4,9 +4,6 @@ CHEPLAY es una aplicación Spring Boot + Neo4j que demuestra cómo los
 algoritmos clásicos (BFS, Dijkstra, Prim, …) pueden impulsar 
 recomendaciones del mundo real.
 
-Este README se enfoca en ejecutar el nuevo *Pipeline de Recomendaciones* 
-agregado en Octubre 2025.
-
 ---
 ## Inicio Rápido (JVM local)
 ```bash
