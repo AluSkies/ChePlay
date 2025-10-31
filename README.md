@@ -1,80 +1,81 @@
-# CHEPLAY – Social-Based Movie & Music Recommender
+# CHEPLAY – Recomendador Social de Películas y Música
 
-CHEPLAY is a Spring Boot + Neo4j application that demonstrates how classic
-algorithms (BFS, Dijkstra, Prim, …) can drive real-world recommendations.
+CHEPLAY es una aplicación Spring Boot + Neo4j que demuestra cómo los 
+algoritmos clásicos (BFS, Dijkstra, Prim, …) pueden impulsar 
+recomendaciones del mundo real.
 
-This README focuses on running the new *Recommendation Pipeline* added in
-October 2025.
+Este README se enfoca en ejecutar el nuevo *Pipeline de Recomendaciones* 
+agregado en Octubre 2025.
 
 ---
-## Quick Start (local JVM)
+## Inicio Rápido (JVM local)
 ```bash
-# prerequisites: JDK 21 + Maven 3.9+
-export NEO4J_URI=neo4j+s://<your-aura>.databases.neo4j.io
+# prerequisitos: JDK 21 + Maven 3.9+
+export NEO4J_URI=neo4j+s://<tu-aura>.databases.neo4j.io
 export NEO4J_USER=neo4j
-export NEO4J_PASSWORD=<password>
+export NEO4J_PASSWORD=<contraseña>
 
-./mvnw verify            # runs unit + Aura integration tests
+./mvnw verify            # ejecuta tests unitarios + integración Aura
 ./mvnw -DskipTests package
 java -jar target/ChePlay-0.0.1-SNAPSHOT.jar
 ```
-Server starts on `http://localhost:8080`.
+El servidor inicia en `http://localhost:8080`.
 
 ---
-## Docker Build (runs tests inside container)
-A helper compose file mounts the source, your Maven cache and injects Aura
-credentials:
+## Build con Docker (ejecuta tests dentro del contenedor)
+Un archivo compose helper monta el código fuente, tu caché de Maven e 
+inyecta las credenciales de Aura:
 ```bash
 docker compose -f compose.test.yaml up --build
 ```
 
 ---
-## Frontend Interface
+## Interfaz Frontend
 
-Open `http://localhost:8080` to access the modern web interface with:
+Abrí `http://localhost:8080` para acceder a la interfaz web moderna con:
 
-### 🎵 Music Tab
-- **Friend Recommendations**: Network-based recommendations using graph 
-  algorithms
-- **Song Recommendations**: Prim MST algorithm for music discovery
-- **Playlist Generator**: Dynamic programming for optimal playlists
-- **Trending**: Real-time popular songs
+### 🎵 Pestaña Música
+- **Recomendación de Amigos**: Recomendaciones basadas en red usando 
+  algoritmos de grafos
+- **Recomendación de Canciones**: Algoritmo Prim MST para descubrir música
+- **Generador de Playlist**: Programación dinámica para playlists óptimas
+- **Trending**: Canciones populares en tiempo real
 
-### 🎬 Movies Tab
-- **Movie Recommendations**: Choose from BFS, DFS, Kruskal, or MergeSort
-- **Marathon Planner**: DP or Branch & Bound for optimal movie marathons
-- **Trending Movies**: Global, by genre, or most influential
+### 🎬 Pestaña Películas
+- **Recomendaciones de Películas**: Elegí entre BFS, DFS, Kruskal o MergeSort
+- **Planificador de Maratón**: DP o Branch & Bound para maratones óptimos
+- **Películas en Tendencia**: Global, por género o más influyentes
 
-### 📊 Analytics Tab
-- **Algorithm Comparison**: Side-by-side performance analysis
-- **System Statistics**: Real-time data insights
+### 📊 Pestaña Analytics
+- **Comparación de Algoritmos**: Análisis de rendimiento lado a lado
+- **Estadísticas del Sistema**: Insights de datos en tiempo real
 
-**Features:**
-- Interactive Chart.js visualizations
-- Responsive Tailwind CSS design
-- Modular ES6 JavaScript architecture
-- Toast notifications and smooth animations
+**Características:**
+- Visualizaciones interactivas con Chart.js
+- Diseño responsive con Tailwind CSS
+- Arquitectura JavaScript modular ES6
+- Notificaciones toast y animaciones suaves
 
-See `src/main/resources/static/FRONTEND_README.md` for detailed frontend 
-documentation.
+Mirá `src/main/resources/static/FRONTEND_README.md` para documentación 
+detallada del frontend.
 
 ---
-## REST API Endpoints
+## Endpoints de la API REST
 
-### Friend & Song Recommendations
+### Recomendaciones de Amigos y Canciones
 ```
 GET /api/recommendations/users
 GET /api/recommendations/closest?user={user}&k={k}
 GET /api/recommendations/songs?user={user}&k={k}
 ```
 
-### Movie Recommendations
+### Recomendaciones de Películas
 ```
 GET /api/movies/recommendations/{algorithm}?user={user}&k={k}
   algorithms: bfs | dfs | diverse | sorted | by-genre
 ```
 
-### Marathon Planning
+### Planificación de Maratón
 ```
 GET /api/movies/marathon/quick?user={user}&totalMinutes={min}&minRating={rating}&algorithm={algo}
   algorithms: dp | branchandbound
@@ -87,78 +88,80 @@ GET /api/movies/trending/{type}?k={k}
 GET /api/trending/global?k={k}
 ```
 
-### Playlist Generation
+### Generación de Playlist
 ```
 GET /api/playlist/generate?user={user}&size={n}&uniqueArtist={bool}&minDuration={sec}&maxDuration={sec}
 ```
 
-For complete API documentation, see `MOVIE_RECOMMENDATIONS_README.md`.
+Para documentación completa de la API, mirá `MOVIE_RECOMMENDATIONS_README.md`.
 
 ---
-## Algorithm Reference
-| Algorithm | Purpose in pipeline |
-|-----------|--------------------|
-| BFS / DFS | Explore N-hop neighbourhood around seeds |
-| Dijkstra  | Rank by similarity distance |
-| Prim / Kruskal | Compute minimal connecting sub-graph |
-| Greedy top-K | Keep top-K most popular frontier items |
-| MergeSort / QuickSort | Sort candidates by composite score |
-| Dynamic (Knapsack) | Fit picks into session length |
-| Backtracking / Branch-and-Bound | Exhaustive subset fallback |
+## Referencia de Algoritmos
+| Algoritmo | Propósito en el pipeline |
+|-----------|-------------------------|
+| BFS / DFS | Explorar vecindario N-hop alrededor de las semillas |
+| Dijkstra  | Rankear por distancia de similitud |
+| Prim / Kruskal | Calcular subgrafo de conexión mínima |
+| Greedy top-K | Mantener los top-K items más populares de la frontera |
+| MergeSort / QuickSort | Ordenar candidatos por puntaje compuesto |
+| Dynamic (Knapsack) | Ajustar selecciones en la duración de sesión |
+| Backtracking / Branch-and-Bound | Fallback de subconjunto exhaustivo |
 
 ---
 ## Testing
-* `RecommendationControllerTest` – MockMvc HTTP test
-* `RecommendationAuraIntegrationTest` – full Spring context against Aura
+* `RecommendationControllerTest` – Test HTTP con MockMvc
+* `RecommendationAuraIntegrationTest` – Contexto Spring completo contra Aura
 
-Set `NEO4J_URI/USER/PASSWORD` to run integration tests locally. Skipped
-otherwise, so CI remains fast and public-repo safe.
+Configurá `NEO4J_URI/USER/PASSWORD` para ejecutar tests de integración 
+localmente. Se saltean en otro caso, para que CI sea rápido y seguro para 
+repos públicos.
 
 ---
-## Data Seeding
+## Carga de Datos (Seeding)
 
-To populate Neo4j Aura with sample data:
+Para poblar Neo4j Aura con datos de ejemplo:
 
 ```bash
-# Set your Neo4j credentials
-export NEO4J_URI=neo4j+s://<your-aura>.databases.neo4j.io
+# Configurá tus credenciales de Neo4j
+export NEO4J_URI=neo4j+s://<tu-aura>.databases.neo4j.io
 export NEO4J_USER=neo4j
-export NEO4J_PASSWORD=<password>
+export NEO4J_PASSWORD=<contraseña>
 
-# Run the seeder (requires compiled JAR)
+# Ejecutá el seeder (requiere el JAR compilado)
 java -cp target/ChePlay-0.0.1-SNAPSHOT.jar \
      org.cheplay.neo4j.MovieDataSeeder
 ```
 
-This creates:
-* 20 movies across multiple genres
-* 3+ test users (u1, u2, u3)
-* WATCHED and RATED relationships
-* SIMILAR_TO relationships between movies
-* User friendship networks
-* Song listening history
+Esto crea:
+* 20 películas de múltiples géneros
+* 3+ usuarios de prueba (u1, u2, u3)
+* Relaciones WATCHED y RATED
+* Relaciones SIMILAR_TO entre películas
+* Redes de amistad entre usuarios
+* Historial de escucha de canciones
 
-**Note:** Uncomment `createMovies()` and `createMovieSimilarities()` 
-in `MovieDataSeeder.java` if movies don't exist yet.
+**Nota:** Descomentá `createMovies()` y `createMovieSimilarities()` en 
+`MovieDataSeeder.java` si las películas aún no existen.
 
 ---
-## Development Notes
+## Notas de Desarrollo
 
-### Frontend Architecture
-* **Tailwind CSS 3.x** via CDN for modern styling
-* **Chart.js 4.x** for interactive data visualizations  
-* **date-fns 3.x** for date manipulation
-* **ES6 Modules**: Modular JavaScript (`api.js`, `ui.js`, `charts.js`, 
+### Arquitectura Frontend
+* **Tailwind CSS 3.x** vía CDN para estilos modernos
+* **Chart.js 4.x** para visualizaciones de datos interactivas
+* **date-fns 3.x** para manipulación de fechas
+* **Módulos ES6**: JavaScript modular (`api.js`, `ui.js`, `charts.js`, 
   `tabs.js`)
-* **No build process**: Direct loading, production-ready
+* **Sin proceso de build**: Carga directa, listo para producción
 
 ### Backend
-* Code style: functional where feasible, max 80 columns
-* Error handling: specific exceptions, try/catch only around external calls
-* Single quotes in JS/TS, double quotes in Python
+* Estilo de código: funcional donde sea posible, máx 80 columnas
+* Manejo de errores: excepciones específicas, try/catch solo en llamadas 
+  externas
+* Comillas simples en JS/TS, comillas dobles en Python
 
-### Documentation
-* Frontend guide: `src/main/resources/static/FRONTEND_README.md`
-* Implementation details: `FRONTEND_ENHANCEMENT_SUMMARY.md`
-* Movie features: `MOVIE_RECOMMENDATIONS_README.md`
+### Documentación
+* Guía frontend: `src/main/resources/static/FRONTEND_README.md`
+* Detalles de implementación: `FRONTEND_ENHANCEMENT_SUMMARY.md`
+* Características de películas: `MOVIE_RECOMMENDATIONS_README.md`
 
