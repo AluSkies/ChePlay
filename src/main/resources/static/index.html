@@ -41,6 +41,21 @@
     <ul id="trendingList"></ul>
   </div>
 
+  <div id="playlistGenerator" style="margin-top:18px">
+    <h3>Playlist generada</h3>
+    <div class="controls">
+      <label>Usuario: <select id="playlistUser"></select></label>
+      <label>Tamaño: <input id="playlistSize" type="number" value="5" min="1" style="width:64px"/></label>
+      <label>Duración min (seg): <input id="playlistMinDuration" type="number" min="0" placeholder="Opcional" style="width:90px"/></label>
+      <label>Duración max (seg): <input id="playlistMaxDuration" type="number" min="0" placeholder="Opcional" style="width:90px"/></label>
+      <label><input id="playlistUnique" type="checkbox" checked/> Artistas únicos</label>
+      <button id="playlistGenerate">Generar playlist</button>
+    </div>
+    <div id="playlistLoading" style="display:none">Generando playlist...</div>
+    <div id="playlistSummary"></div>
+    <ul id="playlistSongs"></ul>
+  </div>
+
   <hr style="margin:32px 0"/>
 
   <h2>Recomendaciones de películas</h2>
@@ -174,6 +189,19 @@
       return await res.json();
     }
 
+    async function fetchPlaylist(user, size, uniqueArtist, minDuration, maxDuration) {
+      const params = new URLSearchParams();
+      params.set('user', user);
+      params.set('size', size);
+      params.set('uniqueArtist', uniqueArtist);
+      if (minDuration != null) params.set('minDuration', minDuration);
+      if (maxDuration != null) params.set('maxDuration', maxDuration);
+      const res = await fetch(`/api/playlist/generate?${params.toString()}`);
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    }
+
     function render(resp) {
   document.getElementById('direct').textContent = formatUserList(resp.directRecommendations);
   document.getElementById('shortest').textContent = formatUserList(resp.shortestPathRecommendations);
@@ -275,6 +303,69 @@
     }
 
     document.getElementById('trendingRefresh').addEventListener('click', loadTrending);
+
+    document.getElementById('playlistGenerate').addEventListener('click', async () => {
+      const playlistUserSelect = document.getElementById('playlistUser');
+      const fallbackUserSelect = document.getElementById('user');
+      const user = (playlistUserSelect.value || (fallbackUserSelect && fallbackUserSelect.value) || '').trim();
+      const sizeValue = parseInt(document.getElementById('playlistSize').value, 10);
+      const minValueRaw = document.getElementById('playlistMinDuration').value;
+      const maxValueRaw = document.getElementById('playlistMaxDuration').value;
+      const uniqueArtist = document.getElementById('playlistUnique').checked;
+      const summaryEl = document.getElementById('playlistSummary');
+      const listEl = document.getElementById('playlistSongs');
+
+      if (!user) {
+        alert('Seleccione un usuario para generar la playlist.');
+        return;
+      }
+
+      const size = Number.isFinite(sizeValue) && sizeValue > 0 ? sizeValue : 5;
+  const minParsed = minValueRaw !== '' ? parseInt(minValueRaw, 10) : null;
+  const maxParsed = maxValueRaw !== '' ? parseInt(maxValueRaw, 10) : null;
+  const minDuration = Number.isFinite(minParsed) && minParsed >= 0 ? minParsed : null;
+  const maxDuration = Number.isFinite(maxParsed) && maxParsed >= 0 ? maxParsed : null;
+
+      summaryEl.innerHTML = '';
+      listEl.innerHTML = '';
+
+      try {
+        document.getElementById('playlistLoading').style.display = 'block';
+        const playlist = await fetchPlaylist(user, size, uniqueArtist, minDuration, maxDuration);
+        document.getElementById('playlistLoading').style.display = 'none';
+
+        if (!playlist) {
+          summaryEl.innerHTML = '<p>No se encontró una playlist que cumpla los criterios.</p>';
+          return;
+        }
+
+        const totalDuration = playlist.totalDuration || 0;
+        const durationMinutes = totalDuration ? (totalDuration / 60).toFixed(1) : '0.0';
+        summaryEl.innerHTML = `
+          <p><strong>Canciones:</strong> ${playlist.size}</p>
+          <p><strong>Duración total:</strong> ${totalDuration} seg (${durationMinutes} min)</p>
+        `;
+
+        if (!playlist.songs || playlist.songs.length === 0) {
+          listEl.innerHTML = '<li>No se devolvieron canciones.</li>';
+          return;
+        }
+
+        for (const song of playlist.songs) {
+          const li = document.createElement('li');
+          const title = song.title || song.id || 'Sin título';
+          const artist = song.artist ? ` — ${song.artist}` : '';
+          const duration = song.duration != null ? ` · ${song.duration} seg` : '';
+          const popularity = song.popularity != null ? ` · Popularidad: ${song.popularity}` : '';
+          li.textContent = `${title}${artist}${duration}${popularity}`;
+          listEl.appendChild(li);
+        }
+      } catch (err) {
+        document.getElementById('playlistLoading').style.display = 'none';
+        summaryEl.innerHTML = '<p>Error al generar la playlist.</p>';
+        console.error('Error al generar playlist', err);
+      }
+    });
 
     // Movie Recommendations
     async function fetchMovieRecommendations(user, k, algorithm) {
@@ -446,6 +537,7 @@
         const mainUserSelect = document.getElementById('user');
         const movieUserSelect = document.getElementById('movieUser');
         const marathonUserSelect = document.getElementById('marathonUser');
+        const playlistUserSelect = document.getElementById('playlistUser');
         
         if (mainUserSelect.options.length > 0) {
           for (let i = 0; i < mainUserSelect.options.length; i++) {
@@ -458,6 +550,14 @@
             opt2.value = mainUserSelect.options[i].value;
             opt2.textContent = mainUserSelect.options[i].textContent;
             marathonUserSelect.appendChild(opt2);
+
+            const opt3 = document.createElement('option');
+            opt3.value = mainUserSelect.options[i].value;
+            opt3.textContent = mainUserSelect.options[i].textContent;
+            playlistUserSelect.appendChild(opt3);
+          }
+          if (playlistUserSelect.options.length > 0) {
+            playlistUserSelect.value = playlistUserSelect.options[0].value;
           }
         }
       } catch (e) { console.warn('No users list', e); }

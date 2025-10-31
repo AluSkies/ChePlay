@@ -35,3 +35,4 @@ build/
 # Local debug dumps
 dump_*.ps1
 *_debug_*.json
+*compose*.yaml
