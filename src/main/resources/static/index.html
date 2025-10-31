@@ -3,566 +3,627 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Recomendaciones — ChePlay</title>
-  <style>
-    body { font-family: Arial, Helvetica, sans-serif; margin: 20px; }
-    .controls { margin-bottom: 12px; }
-    .node { display:inline-block; padding:10px 16px; border-radius:24px; background:#2b8; color:#fff; margin:8px; }
-    .edge { margin: 8px; color:#666 }
-    #graph { margin-top:16px; }
-  </style>
+  <title>ChePlay - Recomendaciones Inteligentes</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  
+  <!-- date-fns -->
+  <script src="https://cdn.jsdelivr.net/npm/date-fns@3.0.0/index.min.js"></script>
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/css/custom.css" />
 </head>
-<body>
-  <h2>Recomendación de amigos (visual)</h2>
-    <div class="controls">
-      <label>Usuario: <select id="user"></select></label>
-      <label>K: <input id="k" type="number" value="5" style="width:64px"/></label>
-      <button id="go">Obtener</button>
-      <!-- song recommendations controls (Prim only) -->
-      <button id="songsGo">Recomendar canciones (Prim)</button>
+<body class="bg-gray-50 min-h-screen">
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-purple-600 to-purple-800 
+                 text-white shadow-lg">
+    <div class="container mx-auto px-4 py-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-3xl font-bold">🎵 ChePlay</h1>
+          <p class="text-white/80 text-sm mt-1">
+            Sistema de recomendaciones con algoritmos inteligentes
+          </p>
+        </div>
+        <div class="text-right">
+          <span id="userDisplay" class="text-sm text-white/80">
+            Usuario: <span id="currentUser" 
+                           class="font-semibold text-white">
+                      Cargando...
+                    </span>
+          </span>
+        </div>
+      </div>
     </div>
+  </header>
 
-  <div id="result">
-    <p><strong>Directas:</strong> <span id="direct">—</span></p>
-    <p><strong>Por camino (corto):</strong> <span id="shortest">—</span></p>
-    <p><strong>Más cercano:</strong> <span id="closest">—</span></p>
-  </div>
-
-  <div id="songResults" style="margin-top:18px">
-    <h3>Recomendaciones de canciones</h3>
-    <div id="songsLoading" style="display:none">Cargando canciones...</div>
-    <ul id="songsList"></ul>
-  </div>
-
-  <div id="trending" style="margin-top:18px">
-    <h3>Trending global</h3>
-    <button id="trendingRefresh">Actualizar trending</button>
-    <div id="trendingLoading" style="display:none">Cargando trending...</div>
-    <ul id="trendingList"></ul>
-  </div>
-
-  <div id="playlistGenerator" style="margin-top:18px">
-    <h3>Playlist generada</h3>
-    <div class="controls">
-      <label>Usuario: <select id="playlistUser"></select></label>
-      <label>Tamaño: <input id="playlistSize" type="number" value="5" min="1" style="width:64px"/></label>
-      <label>Duración min (seg): <input id="playlistMinDuration" type="number" min="0" placeholder="Opcional" style="width:90px"/></label>
-      <label>Duración max (seg): <input id="playlistMaxDuration" type="number" min="0" placeholder="Opcional" style="width:90px"/></label>
-      <label><input id="playlistUnique" type="checkbox" checked/> Artistas únicos</label>
-      <button id="playlistGenerate">Generar playlist</button>
+  <!-- Tab Navigation -->
+  <nav class="bg-white shadow-sm border-b border-gray-200 sticky top-0 
+              z-50">
+    <div class="container mx-auto px-4">
+      <div class="flex space-x-1 overflow-x-auto">
+        <button data-tab="music" 
+                class="tab-button px-6 py-4 font-medium text-gray-600 
+                       hover:text-purple-600 whitespace-nowrap 
+                       transition-colors active">
+          🎵 Música
+        </button>
+        <button data-tab="movies" 
+                class="tab-button px-6 py-4 font-medium text-gray-600 
+                       hover:text-purple-600 whitespace-nowrap 
+                       transition-colors">
+          🎬 Películas
+        </button>
+        <button data-tab="analytics" 
+                class="tab-button px-6 py-4 font-medium text-gray-600 
+                       hover:text-purple-600 whitespace-nowrap 
+                       transition-colors">
+          📊 Analytics
+        </button>
+      </div>
     </div>
-    <div id="playlistLoading" style="display:none">Generando playlist...</div>
-    <div id="playlistSummary"></div>
-    <ul id="playlistSongs"></ul>
-  </div>
+  </nav>
 
-  <hr style="margin:32px 0"/>
-
-  <h2>Recomendaciones de películas</h2>
-  <div class="controls">
-    <label>Usuario: <select id="movieUser"></select></label>
-    <label>K: <input id="movieK" type="number" value="5" style="width:64px"/></label>
-    <label>Algoritmo:
-      <select id="movieAlgorithm">
-        <option value="bfs">BFS (Amplitud)</option>
-        <option value="dfs">DFS (Profundidad)</option>
-        <option value="diverse">Kruskal (Diverso)</option>
-        <option value="sorted">MergeSort</option>
-      </select>
-    </label>
-    <button id="movieGo">Recomendar películas</button>
-  </div>
-
-  <div id="movieResults" style="margin-top:18px">
-    <h3>Películas recomendadas</h3>
-    <div id="moviesLoading" style="display:none">Cargando...</div>
-    <ul id="moviesList"></ul>
-  </div>
-
-  <hr style="margin:32px 0"/>
-
-  <h2>Planificador de maratón de películas</h2>
-  <div class="controls">
-    <label>Usuario: <select id="marathonUser"></select></label>
-    <label>Duración (min): <input id="marathonTime" type="number" value="360" style="width:80px"/></label>
-    <label>Rating mínimo: <input id="marathonRating" type="number" value="3.5" step="0.5" style="width:60px"/></label>
-    <label>Algoritmo:
-      <select id="marathonAlgorithm">
-        <option value="dp">Dynamic Programming</option>
-        <option value="branchandbound">Branch & Bound</option>
-      </select>
-    </label>
-    <button id="marathonGo">Planificar maratón</button>
-  </div>
-
-  <div id="marathonResults" style="margin-top:18px">
-    <h3>Plan de maratón</h3>
-    <div id="marathonLoading" style="display:none">Planificando...</div>
-    <div id="marathonPlan"></div>
-  </div>
-
-  <hr style="margin:32px 0"/>
-
-  <h2>Películas en tendencia</h2>
-  <div class="controls">
-    <label>Tipo:
-      <select id="trendingType">
-        <option value="global">Global (Greedy)</option>
-        <option value="by-genre">Por Género (MergeSort)</option>
-        <option value="influential">Influyentes (BFS)</option>
-      </select>
-    </label>
-    <label id="genreLabel" style="display:none">
-      Género: <input id="trendingGenre" type="text" placeholder="Sci-Fi, Action, Drama..." style="width:150px"/>
-    </label>
-    <label>K: <input id="movieTrendingK" type="number" value="10" style="width:64px"/></label>
-    <button id="movieTrendingGo">Ver trending</button>
-  </div>
-
-  <div id="movieTrendingResults" style="margin-top:18px">
-    <h3 id="movieTrendingTitle">Top películas</h3>
-    <div id="movieTrendingLoading" style="display:none">Cargando...</div>
-    <ul id="movieTrendingList"></ul>
-  </div>
-
-  <div id="graph"></div>
-
-  <script>
-    function formatUserList(list) {
-      if (!Array.isArray(list) || list.length === 0) return '—';
-      return list.map(item => formatUser(item)).join(', ');
-    }
-
-    function formatUser(item) {
-      if (!item) return '—';
-      if (typeof item === 'string') return item;
-      return item.label || item.name || item.id || '—';
-    }
-
-    async function fetchUsers() {
-      const res = await fetch('/api/recommendations/users');
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const list = await res.json();
-      const sel = document.getElementById('user');
-      sel.innerHTML = '';
-      // list may be an array or an object with value field depending on the controller
-      const users = Array.isArray(list) ? list : (list.value || list);
-      users.forEach(u => {
-        const opt = document.createElement('option');
-        if (u && typeof u === 'object') {
-          const value = u.id || u.value || '';
-          opt.value = value;
-          opt.textContent = u.label || u.name || u.username || value;
-        } else {
-          opt.value = u;
-          opt.textContent = u;
-        }
-        sel.appendChild(opt);
-      });
-      // set default
-      if (sel.options.length > 0) sel.value = sel.options[0].value;
-    }
-
-    async function fetchRec(user, k) {
-      const res = await fetch(`/api/recommendations/closest?user=${encodeURIComponent(user)}&k=${k}`);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return await res.json();
-    }
-
-    async function fetchSongRec(user, k, window, lambda) {
-      let qs = `user=${encodeURIComponent(user)}&k=${k}`;
-      if (window != null) qs += `&window=${encodeURIComponent(window)}`;
-      if (lambda != null) qs += `&lambda=${encodeURIComponent(lambda)}`;
-      const res = await fetch(`/api/recommendations/songs?${qs}`);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return await res.json();
-    }
-
-    async function fetchTrending(k, platforms) {
-      const params = new URLSearchParams();
-      params.set('k', k);
-      if (platforms && platforms.length) {
-        params.set('platforms', platforms.join(','));
-      }
-      const res = await fetch(`/api/trending/global?${params.toString()}`);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return await res.json();
-    }
-
-    async function fetchPlaylist(user, size, uniqueArtist, minDuration, maxDuration) {
-      const params = new URLSearchParams();
-      params.set('user', user);
-      params.set('size', size);
-      params.set('uniqueArtist', uniqueArtist);
-      if (minDuration != null) params.set('minDuration', minDuration);
-      if (maxDuration != null) params.set('maxDuration', maxDuration);
-      const res = await fetch(`/api/playlist/generate?${params.toString()}`);
-      if (res.status === 404) return null;
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return await res.json();
-    }
-
-    function render(resp) {
-  document.getElementById('direct').textContent = formatUserList(resp.directRecommendations);
-  document.getElementById('shortest').textContent = formatUserList(resp.shortestPathRecommendations);
-  document.getElementById('closest').textContent = formatUser(resp.closest);
-
-      const graph = document.getElementById('graph');
-      graph.innerHTML = '';
-      const select = document.getElementById('user');
-      const selectedOption = select && select.selectedIndex >= 0 ? select.options[select.selectedIndex] : null;
-      const userLabel = selectedOption ? selectedOption.textContent : resp.user;
-  const closestObj = resp.closest;
-  const closestId = closestObj && closestObj.id;
-  const closestLabel = formatUser(closestObj);
-
-      // Render simple visual: user node and closest node, connect if appears in direct recommendations
-      const u = document.createElement('div'); u.className='node'; u.textContent = userLabel;
-      graph.appendChild(u);
-
-      if (closestId && closestLabel && closestLabel !== '—') {
-        const v = document.createElement('div'); v.className='node'; v.textContent = closestLabel; v.style.background='#28f';
-        graph.appendChild(v);
-
-        // edge
-        const edge = document.createElement('div'); edge.className='edge';
-        const isDirect = Array.isArray(resp.directRecommendations) && resp.directRecommendations.some(item => item && item.id === closestId);
-        edge.textContent = isDirect ? 'Conexión directa' : 'Conexión por camino más corto';
-        graph.appendChild(edge);
-      }
-    }
-
-    function renderTrending(items) {
-      const list = document.getElementById('trendingList');
-      list.innerHTML = '';
-      if (!items || items.length === 0) {
-        list.innerHTML = '<li>No hay datos</li>';
-        return;
-      }
-      items.forEach((item, idx) => {
-        const li = document.createElement('li');
-        const title = item.title || item.songId || 'Desconocido';
-        const artist = item.artist ? ` — ${item.artist}` : '';
-        li.textContent = `${idx + 1}. ${title}${artist} (${item.plays} plays)`;
-        list.appendChild(li);
-      });
-    }
-
-    document.getElementById('go').addEventListener('click', async () => {
-      const user = document.getElementById('user').value.trim();
-      const k = parseInt(document.getElementById('k').value, 10) || 5;
-      try {
-        document.getElementById('closest').textContent = 'Cargando...';
-        const resp = await fetchRec(user, k);
-        render(resp);
-      } catch (err) {
-        alert('Error: ' + err.message);
-        console.error(err);
-      }
-    });
-
-    document.getElementById('songsGo').addEventListener('click', async () => {
-      const user = document.getElementById('user').value.trim();
-      const k = parseInt(document.getElementById('k').value, 10) || 5;
-      try {
-        document.getElementById('songsLoading').style.display = 'block';
-        document.getElementById('songsList').innerHTML = '';
-        // optional: window and lambda could be exposed in UI; use defaults for now
-        const resp = await fetchSongRec(user, k, null, null);
-        document.getElementById('songsLoading').style.display = 'none';
-        const list = document.getElementById('songsList');
-        if (!resp || resp.length === 0) {
-          list.innerHTML = '<li>No hay recomendaciones</li>';
-          return;
-        }
-        for (const item of resp) {
-          const li = document.createElement('li');
-          const label = item.label || [item.artist, item.title].filter(Boolean).join(' - ') || item.id;
-          const score = (typeof item.score === 'number') ? item.score.toFixed(3).replace(/\.000$/, '') : item.score;
-          li.textContent = `${label} (score: ${score})`;
-          list.appendChild(li);
-        }
-      } catch (err) {
-        document.getElementById('songsLoading').style.display = 'none';
-        alert('Error al obtener canciones: ' + err.message);
-        console.error(err);
-      }
-    });
-
-    async function loadTrending() {
-      try {
-        document.getElementById('trendingLoading').style.display = 'block';
-        const list = await fetchTrending(10, null);
-        document.getElementById('trendingLoading').style.display = 'none';
-        renderTrending(list);
-      } catch (err) {
-        document.getElementById('trendingLoading').style.display = 'none';
-        console.error('Error al obtener trending', err);
-        document.getElementById('trendingList').innerHTML = '<li>Error al cargar trending</li>';
-      }
-    }
-
-    document.getElementById('trendingRefresh').addEventListener('click', loadTrending);
-
-    document.getElementById('playlistGenerate').addEventListener('click', async () => {
-      const playlistUserSelect = document.getElementById('playlistUser');
-      const fallbackUserSelect = document.getElementById('user');
-      const user = (playlistUserSelect.value || (fallbackUserSelect && fallbackUserSelect.value) || '').trim();
-      const sizeValue = parseInt(document.getElementById('playlistSize').value, 10);
-      const minValueRaw = document.getElementById('playlistMinDuration').value;
-      const maxValueRaw = document.getElementById('playlistMaxDuration').value;
-      const uniqueArtist = document.getElementById('playlistUnique').checked;
-      const summaryEl = document.getElementById('playlistSummary');
-      const listEl = document.getElementById('playlistSongs');
-
-      if (!user) {
-        alert('Seleccione un usuario para generar la playlist.');
-        return;
-      }
-
-      const size = Number.isFinite(sizeValue) && sizeValue > 0 ? sizeValue : 5;
-  const minParsed = minValueRaw !== '' ? parseInt(minValueRaw, 10) : null;
-  const maxParsed = maxValueRaw !== '' ? parseInt(maxValueRaw, 10) : null;
-  const minDuration = Number.isFinite(minParsed) && minParsed >= 0 ? minParsed : null;
-  const maxDuration = Number.isFinite(maxParsed) && maxParsed >= 0 ? maxParsed : null;
-
-      summaryEl.innerHTML = '';
-      listEl.innerHTML = '';
-
-      try {
-        document.getElementById('playlistLoading').style.display = 'block';
-        const playlist = await fetchPlaylist(user, size, uniqueArtist, minDuration, maxDuration);
-        document.getElementById('playlistLoading').style.display = 'none';
-
-        if (!playlist) {
-          summaryEl.innerHTML = '<p>No se encontró una playlist que cumpla los criterios.</p>';
-          return;
-        }
-
-        const totalDuration = playlist.totalDuration || 0;
-        const durationMinutes = totalDuration ? (totalDuration / 60).toFixed(1) : '0.0';
-        summaryEl.innerHTML = `
-          <p><strong>Canciones:</strong> ${playlist.size}</p>
-          <p><strong>Duración total:</strong> ${totalDuration} seg (${durationMinutes} min)</p>
-        `;
-
-        if (!playlist.songs || playlist.songs.length === 0) {
-          listEl.innerHTML = '<li>No se devolvieron canciones.</li>';
-          return;
-        }
-
-        for (const song of playlist.songs) {
-          const li = document.createElement('li');
-          const title = song.title || song.id || 'Sin título';
-          const artist = song.artist ? ` — ${song.artist}` : '';
-          const duration = song.duration != null ? ` · ${song.duration} seg` : '';
-          const popularity = song.popularity != null ? ` · Popularidad: ${song.popularity}` : '';
-          li.textContent = `${title}${artist}${duration}${popularity}`;
-          listEl.appendChild(li);
-        }
-      } catch (err) {
-        document.getElementById('playlistLoading').style.display = 'none';
-        summaryEl.innerHTML = '<p>Error al generar la playlist.</p>';
-        console.error('Error al generar playlist', err);
-      }
-    });
-
-    // Movie Recommendations
-    async function fetchMovieRecommendations(user, k, algorithm) {
-      const res = await fetch(`/api/movies/recommendations/${algorithm}?user=${encodeURIComponent(user)}&k=${k}`);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return await res.json();
-    }
-
-    document.getElementById('movieGo').addEventListener('click', async () => {
-      const user = document.getElementById('movieUser').value.trim();
-      const k = parseInt(document.getElementById('movieK').value, 10) || 5;
-      const algorithm = document.getElementById('movieAlgorithm').value;
-      try {
-        document.getElementById('moviesLoading').style.display = 'block';
-        document.getElementById('moviesList').innerHTML = '';
-        const movies = await fetchMovieRecommendations(user, k, algorithm);
-        document.getElementById('moviesLoading').style.display = 'none';
-        const list = document.getElementById('moviesList');
-        if (!movies || movies.length === 0) {
-          list.innerHTML = '<li>No hay recomendaciones</li>';
-          return;
-        }
-        for (const movie of movies) {
-          const li = document.createElement('li');
-          const title = movie.title || movie.id;
-          const genre = movie.genre ? ` [${movie.genre}]` : '';
-          const year = movie.year ? ` (${movie.year})` : '';
-          const score = movie.score != null ? movie.score.toFixed(3) : 'N/A';
-          li.textContent = `${title}${genre}${year} - Score: ${score}`;
-          list.appendChild(li);
-        }
-      } catch (err) {
-        document.getElementById('moviesLoading').style.display = 'none';
-        alert('Error al obtener recomendaciones: ' + err.message);
-        console.error(err);
-      }
-    });
-
-    // Marathon Planning
-    async function fetchMarathonPlan(user, totalMinutes, minRating, algorithm) {
-      const res = await fetch(`/api/movies/marathon/quick?user=${encodeURIComponent(user)}&totalMinutes=${totalMinutes}&minRating=${minRating}&algorithm=${algorithm}`);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return await res.json();
-    }
-
-    document.getElementById('marathonGo').addEventListener('click', async () => {
-      const user = document.getElementById('marathonUser').value.trim();
-      const totalMinutes = parseInt(document.getElementById('marathonTime').value, 10) || 360;
-      const minRating = parseFloat(document.getElementById('marathonRating').value) || 3.5;
-      const algorithm = document.getElementById('marathonAlgorithm').value;
-      try {
-        document.getElementById('marathonLoading').style.display = 'block';
-        document.getElementById('marathonPlan').innerHTML = '';
-        const plan = await fetchMarathonPlan(user, totalMinutes, minRating, algorithm);
-        document.getElementById('marathonLoading').style.display = 'none';
-        const planDiv = document.getElementById('marathonPlan');
-        if (!plan.movies || plan.movies.length === 0) {
-          planDiv.innerHTML = '<p>No se encontraron películas para el maratón</p>';
-          return;
-        }
-        const summary = `<p><strong>Algoritmo:</strong> ${plan.algorithm}</p>
-          <p><strong>Duración total:</strong> ${plan.totalDuration} minutos (${(plan.totalDuration/60).toFixed(1)} horas)</p>
-          <p><strong>Rating promedio:</strong> ${plan.averageRating.toFixed(2)}</p>
-          <p><strong>Películas (${plan.movies.length}):</strong></p>`;
-        const list = document.createElement('ul');
-        for (const movie of plan.movies) {
-          const li = document.createElement('li');
-          const title = movie.title || movie.movieId;
-          const genre = movie.genre ? ` [${movie.genre}]` : '';
-          const duration = movie.duration ? ` - ${movie.duration} min` : '';
-          const rating = movie.rating != null ? ` - Rating: ${movie.rating.toFixed(1)}` : '';
-          li.textContent = `${title}${genre}${duration}${rating}`;
-          list.appendChild(li);
-        }
-        planDiv.innerHTML = summary;
-        planDiv.appendChild(list);
-      } catch (err) {
-        document.getElementById('marathonLoading').style.display = 'none';
-        alert('Error al planificar maratón: ' + err.message);
-        console.error(err);
-      }
-    });
-
-    // Movie Trending - Show/hide genre input based on trending type
-    document.getElementById('trendingType').addEventListener('change', function() {
-      const genreLabel = document.getElementById('genreLabel');
-      if (this.value === 'by-genre') {
-        genreLabel.style.display = 'inline-block';
-      } else {
-        genreLabel.style.display = 'none';
-      }
-    });
-
-    async function fetchMovieTrending(type, k, genre) {
-      let url;
-      if (type === 'global') {
-        url = `/api/movies/trending/global?k=${k}`;
-      } else if (type === 'by-genre') {
-        if (!genre || genre.trim() === '') {
-          throw new Error('Debe especificar un género');
-        }
-        url = `/api/movies/trending/by-genre?genre=${encodeURIComponent(genre)}&k=${k}`;
-      } else if (type === 'influential') {
-        url = `/api/movies/trending/influential?k=${k}`;
-      }
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return await res.json();
-    }
-
-    document.getElementById('movieTrendingGo').addEventListener('click', async () => {
-      const type = document.getElementById('trendingType').value;
-      const k = parseInt(document.getElementById('movieTrendingK').value, 10) || 10;
-      const genre = document.getElementById('trendingGenre').value.trim();
-      
-      try {
-        document.getElementById('movieTrendingLoading').style.display = 'block';
-        document.getElementById('movieTrendingList').innerHTML = '';
+  <!-- Main Content -->
+  <main class="container mx-auto px-4 py-8">
+    
+    <!-- ==================== MUSIC TAB ==================== -->
+    <div id="music-tab" class="tab-content active">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         
-        const movies = await fetchMovieTrending(type, k, genre);
-        
-        document.getElementById('movieTrendingLoading').style.display = 'none';
-        
-        // Update title based on type
-        const titleEl = document.getElementById('movieTrendingTitle');
-        if (type === 'global') {
-          titleEl.textContent = 'Top películas globales';
-        } else if (type === 'by-genre') {
-          titleEl.textContent = `Top películas de ${genre}`;
-        } else if (type === 'influential') {
-          titleEl.textContent = 'Películas más influyentes';
-        }
-        
-        const list = document.getElementById('movieTrendingList');
-        if (!movies || movies.length === 0) {
-          list.innerHTML = '<li>No hay datos</li>';
-          return;
-        }
-        
-        for (let i = 0; i < movies.length; i++) {
-          const movie = movies[i];
-          const li = document.createElement('li');
-          const title = movie.title || movie.movieId;
-          const movieGenre = movie.genre ? ` [${movie.genre}]` : '';
+        <!-- Friend Recommendations Section -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h2 class="text-xl font-bold text-gray-800 mb-4 
+                     flex items-center gap-2">
+            <span>👥</span>
+            Recomendación de Amigos
+          </h2>
           
-          if (type === 'influential') {
-            const influence = movie.influenceScore || 0;
-            const year = movie.year ? ` (${movie.year})` : '';
-            li.textContent = `${i+1}. ${title}${movieGenre}${year} - Influencia: ${influence} películas`;
-          } else {
-            const watches = movie.watchCount || 0;
-            li.textContent = `${i+1}. ${title}${movieGenre} - ${watches} views`;
-          }
-          
-          list.appendChild(li);
-        }
-      } catch (err) {
-        document.getElementById('movieTrendingLoading').style.display = 'none';
-        alert('Error al cargar trending: ' + err.message);
-        console.error(err);
-      }
-    });
-
-    // Load users on startup and populate movie dropdowns
-    (async () => {
-      try { 
-        await fetchUsers(); 
-        // Populate movie user selects
-        const mainUserSelect = document.getElementById('user');
-        const movieUserSelect = document.getElementById('movieUser');
-        const marathonUserSelect = document.getElementById('marathonUser');
-        const playlistUserSelect = document.getElementById('playlistUser');
-        
-        if (mainUserSelect.options.length > 0) {
-          for (let i = 0; i < mainUserSelect.options.length; i++) {
-            const opt1 = document.createElement('option');
-            opt1.value = mainUserSelect.options[i].value;
-            opt1.textContent = mainUserSelect.options[i].textContent;
-            movieUserSelect.appendChild(opt1);
+          <div class="space-y-4">
+            <!-- Controls -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Usuario
+                </label>
+                <select id="friendUser" 
+                        class="w-full px-3 py-2 border border-gray-300 
+                               rounded-lg focus:ring-2 focus:ring-purple-500 
+                               focus:border-transparent">
+                  <option>Cargando...</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Cantidad (K)
+                </label>
+                <input type="number" id="friendK" value="5" min="1" 
+                       class="w-full px-3 py-2 border border-gray-300 
+                              rounded-lg focus:ring-2 focus:ring-purple-500 
+                              focus:border-transparent" />
+              </div>
+            </div>
             
-            const opt2 = document.createElement('option');
-            opt2.value = mainUserSelect.options[i].value;
-            opt2.textContent = mainUserSelect.options[i].textContent;
-            marathonUserSelect.appendChild(opt2);
+            <button id="friendGo" 
+                    class="w-full bg-gradient-to-r from-purple-600 
+                           to-purple-800 text-white py-2 px-4 rounded-lg 
+                           font-medium hover:opacity-90 transition-opacity 
+                           shadow-md">
+              Obtener Recomendaciones
+            </button>
+          </div>
 
-            const opt3 = document.createElement('option');
-            opt3.value = mainUserSelect.options[i].value;
-            opt3.textContent = mainUserSelect.options[i].textContent;
-            playlistUserSelect.appendChild(opt3);
-          }
-          if (playlistUserSelect.options.length > 0) {
-            playlistUserSelect.value = playlistUserSelect.options[0].value;
-          }
-        }
-      } catch (e) { console.warn('No users list', e); }
-      await loadTrending();
-    })();
-  </script>
+          <!-- Results -->
+          <div id="friendResults" class="mt-6 space-y-4 hidden">
+            <div>
+              <h3 class="text-sm font-semibold text-gray-700 mb-2">
+                Conexiones Directas
+              </h3>
+              <div id="friendDirect" class="space-y-2"></div>
+            </div>
+            
+            <div>
+              <h3 class="text-sm font-semibold text-gray-700 mb-2">
+                Por Camino Más Corto
+              </h3>
+              <div id="friendShortest" class="space-y-2"></div>
+            </div>
+            
+            <div>
+              <h3 class="text-sm font-semibold text-gray-700 mb-2">
+                Amigo Más Cercano
+              </h3>
+              <div id="friendClosest" class="space-y-2"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Friend Network Visualization -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h2 class="text-xl font-bold text-gray-800 mb-4">
+            Red de Conexiones
+          </h2>
+          <div id="friendNetworkChartContainer" 
+               class="chart-container"></div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Song Recommendations Section -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h2 class="text-xl font-bold text-gray-800 mb-4 
+                     flex items-center gap-2">
+            <span>🎵</span>
+            Recomendación de Canciones (Prim)
+          </h2>
+          
+          <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Usuario
+                </label>
+                <select id="songUser" 
+                        class="w-full px-3 py-2 border border-gray-300 
+                               rounded-lg focus:ring-2 focus:ring-purple-500 
+                               focus:border-transparent">
+                  <option>Cargando...</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Cantidad (K)
+                </label>
+                <input type="number" id="songK" value="10" min="1" 
+                       class="w-full px-3 py-2 border border-gray-300 
+                              rounded-lg focus:ring-2 focus:ring-purple-500 
+                              focus:border-transparent" />
+              </div>
+            </div>
+            
+            <button id="songGo" 
+                    class="w-full bg-gradient-to-r from-purple-600 
+                           to-purple-800 text-white py-2 px-4 rounded-lg 
+                           font-medium hover:opacity-90 transition-opacity 
+                           shadow-md">
+              Recomendar Canciones
+            </button>
+          </div>
+
+          <div id="songResults" class="mt-6 space-y-2"></div>
+        </div>
+
+        <!-- Playlist Generator Section -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h2 class="text-xl font-bold text-gray-800 mb-4 
+                     flex items-center gap-2">
+            <span>📝</span>
+            Generador de Playlist
+          </h2>
+          
+          <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Usuario
+                </label>
+                <select id="playlistUser" 
+                        class="w-full px-3 py-2 border border-gray-300 
+                               rounded-lg focus:ring-2 focus:ring-purple-500 
+                               focus:border-transparent">
+                  <option>Cargando...</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Tamaño
+                </label>
+                <input type="number" id="playlistSize" value="5" min="1" 
+                       class="w-full px-3 py-2 border border-gray-300 
+                              rounded-lg focus:ring-2 focus:ring-purple-500 
+                              focus:border-transparent" />
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Duración mín (seg)
+                </label>
+                <input type="number" id="playlistMinDuration" min="0" 
+                       placeholder="Opcional"
+                       class="w-full px-3 py-2 border border-gray-300 
+                              rounded-lg focus:ring-2 focus:ring-purple-500 
+                              focus:border-transparent" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Duración máx (seg)
+                </label>
+                <input type="number" id="playlistMaxDuration" min="0" 
+                       placeholder="Opcional"
+                       class="w-full px-3 py-2 border border-gray-300 
+                              rounded-lg focus:ring-2 focus:ring-purple-500 
+                              focus:border-transparent" />
+              </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <input type="checkbox" id="playlistUnique" checked 
+                     class="w-4 h-4 text-purple-600 border-gray-300 
+                            rounded focus:ring-purple-500" />
+              <label for="playlistUnique" 
+                     class="text-sm font-medium text-gray-700">
+                Artistas únicos
+              </label>
+            </div>
+            
+            <button id="playlistGenerate" 
+                    class="w-full bg-gradient-to-r from-purple-600 
+                           to-purple-800 text-white py-2 px-4 rounded-lg 
+                           font-medium hover:opacity-90 transition-opacity 
+                           shadow-md">
+              Generar Playlist
+            </button>
+          </div>
+
+          <div id="playlistSummary" class="mt-4"></div>
+          <div id="playlistResults" class="mt-2 space-y-2"></div>
+        </div>
+      </div>
+
+      <!-- Trending Section -->
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-bold text-gray-800 
+                     flex items-center gap-2">
+            <span>🔥</span>
+            Trending Global
+          </h2>
+          <button id="trendingRefresh" 
+                  class="px-4 py-2 bg-gray-100 hover:bg-gray-200 
+                         text-gray-700 rounded-lg font-medium 
+                         transition-colors">
+            ↻ Actualizar
+          </button>
+        </div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div id="trendingResults" class="space-y-2"></div>
+          <div id="trendingChartContainer" class="chart-container"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== MOVIES TAB ==================== -->
+    <div id="movies-tab" class="tab-content">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        
+        <!-- Movie Recommendations Section -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h2 class="text-xl font-bold text-gray-800 mb-4 
+                     flex items-center gap-2">
+            <span>🎬</span>
+            Recomendaciones de Películas
+          </h2>
+          
+          <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Usuario
+                </label>
+                <select id="movieUser" 
+                        class="w-full px-3 py-2 border border-gray-300 
+                               rounded-lg focus:ring-2 focus:ring-purple-500 
+                               focus:border-transparent">
+                  <option>Cargando...</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Cantidad (K)
+                </label>
+                <input type="number" id="movieK" value="10" min="1" 
+                       class="w-full px-3 py-2 border border-gray-300 
+                              rounded-lg focus:ring-2 focus:ring-purple-500 
+                              focus:border-transparent" />
+              </div>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Algoritmo
+              </label>
+              <select id="movieAlgorithm" 
+                      class="w-full px-3 py-2 border border-gray-300 
+                             rounded-lg focus:ring-2 focus:ring-purple-500 
+                             focus:border-transparent">
+                <option value="bfs">BFS (Amplitud)</option>
+                <option value="dfs">DFS (Profundidad)</option>
+                <option value="diverse">Kruskal (Diverso)</option>
+                <option value="sorted">MergeSort</option>
+              </select>
+            </div>
+            
+            <button id="movieGo" 
+                    class="w-full bg-gradient-to-r from-purple-600 
+                           to-purple-800 text-white py-2 px-4 rounded-lg 
+                           font-medium hover:opacity-90 transition-opacity 
+                           shadow-md">
+              Recomendar Películas
+            </button>
+          </div>
+
+          <div id="movieResults" class="mt-6 space-y-2"></div>
+        </div>
+
+        <!-- Genre Distribution Chart -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h2 class="text-xl font-bold text-gray-800 mb-4">
+            Distribución por Género
+          </h2>
+          <div id="genreDistributionChartContainer" 
+               class="chart-container"></div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Marathon Planner Section -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h2 class="text-xl font-bold text-gray-800 mb-4 
+                     flex items-center gap-2">
+            <span>⏱️</span>
+            Planificador de Maratón
+          </h2>
+          
+          <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Usuario
+                </label>
+                <select id="marathonUser" 
+                        class="w-full px-3 py-2 border border-gray-300 
+                               rounded-lg focus:ring-2 focus:ring-purple-500 
+                               focus:border-transparent">
+                  <option>Cargando...</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Duración (min)
+                </label>
+                <input type="number" id="marathonTime" value="360" min="1" 
+                       class="w-full px-3 py-2 border border-gray-300 
+                              rounded-lg focus:ring-2 focus:ring-purple-500 
+                              focus:border-transparent" />
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Rating mínimo
+                </label>
+                <input type="number" id="marathonRating" value="3.5" 
+                       step="0.5" min="0" max="5"
+                       class="w-full px-3 py-2 border border-gray-300 
+                              rounded-lg focus:ring-2 focus:ring-purple-500 
+                              focus:border-transparent" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Algoritmo
+                </label>
+                <select id="marathonAlgorithm" 
+                        class="w-full px-3 py-2 border border-gray-300 
+                               rounded-lg focus:ring-2 focus:ring-purple-500 
+                               focus:border-transparent">
+                  <option value="dp">Dynamic Programming</option>
+                  <option value="branchandbound">Branch & Bound</option>
+                </select>
+              </div>
+            </div>
+            
+            <button id="marathonGo" 
+                    class="w-full bg-gradient-to-r from-purple-600 
+                           to-purple-800 text-white py-2 px-4 rounded-lg 
+                           font-medium hover:opacity-90 transition-opacity 
+                           shadow-md">
+              Planificar Maratón
+            </button>
+          </div>
+
+          <div id="marathonSummary" class="mt-4"></div>
+          <div id="marathonResults" class="mt-2 space-y-2"></div>
+        </div>
+
+        <!-- Marathon Duration Chart -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h2 class="text-xl font-bold text-gray-800 mb-4">
+            Duración del Maratón
+          </h2>
+          <div id="marathonDurationChartContainer" 
+               class="chart-container"></div>
+        </div>
+      </div>
+
+      <!-- Movie Trending Section -->
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4 
+                   flex items-center gap-2">
+          <span>🔥</span>
+          Películas en Tendencia
+        </h2>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Tipo
+            </label>
+            <select id="movieTrendingType" 
+                    class="w-full px-3 py-2 border border-gray-300 
+                           rounded-lg focus:ring-2 focus:ring-purple-500 
+                           focus:border-transparent">
+              <option value="global">Global (Greedy)</option>
+              <option value="by-genre">Por Género (MergeSort)</option>
+              <option value="influential">Influyentes (BFS)</option>
+            </select>
+          </div>
+          <div id="genreInputContainer" class="hidden">
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Género
+            </label>
+            <input type="text" id="movieTrendingGenre" 
+                   placeholder="Sci-Fi, Action, Drama..."
+                   class="w-full px-3 py-2 border border-gray-300 
+                          rounded-lg focus:ring-2 focus:ring-purple-500 
+                          focus:border-transparent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Cantidad (K)
+            </label>
+            <input type="number" id="movieTrendingK" value="10" min="1" 
+                   class="w-full px-3 py-2 border border-gray-300 
+                          rounded-lg focus:ring-2 focus:ring-purple-500 
+                          focus:border-transparent" />
+          </div>
+        </div>
+        
+        <button id="movieTrendingGo" 
+                class="w-full lg:w-auto px-6 py-2 bg-gradient-to-r 
+                       from-purple-600 to-purple-800 text-white rounded-lg 
+                       font-medium hover:opacity-90 transition-opacity 
+                       shadow-md">
+          Ver Trending
+        </button>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          <div id="movieTrendingResults" class="space-y-2"></div>
+          <div id="movieTrendingChartContainer" 
+               class="chart-container"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== ANALYTICS TAB ==================== -->
+    <div id="analytics-tab" class="tab-content">
+      <div class="grid grid-cols-1 gap-6">
+        
+        <!-- Algorithm Comparison Section -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h2 class="text-xl font-bold text-gray-800 mb-4 
+                     flex items-center gap-2">
+            <span>📊</span>
+            Comparación de Algoritmos
+          </h2>
+          
+          <div class="space-y-4 mb-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Usuario
+                </label>
+                <select id="analyticsUser" 
+                        class="w-full px-3 py-2 border border-gray-300 
+                               rounded-lg focus:ring-2 focus:ring-purple-500 
+                               focus:border-transparent">
+                  <option>Cargando...</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Cantidad (K)
+                </label>
+                <input type="number" id="analyticsK" value="10" min="1" 
+                       class="w-full px-3 py-2 border border-gray-300 
+                              rounded-lg focus:ring-2 focus:ring-purple-500 
+                              focus:border-transparent" />
+              </div>
+              <div class="flex items-end">
+                <button id="analyticsCompare" 
+                        class="w-full bg-gradient-to-r from-purple-600 
+                               to-purple-800 text-white py-2 px-4 rounded-lg 
+                               font-medium hover:opacity-90 transition-opacity 
+                               shadow-md">
+                  Comparar Algoritmos
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="algorithmComparisonChartContainer" 
+               class="chart-container-large"></div>
+        </div>
+
+        <!-- Statistics Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-medium text-gray-600">
+                Total de Usuarios
+              </h3>
+              <span class="text-2xl">👥</span>
+            </div>
+            <p id="statsUsers" 
+               class="text-3xl font-bold text-gray-900">
+              -
+            </p>
+          </div>
+          
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-medium text-gray-600">
+                Películas Procesadas
+              </h3>
+              <span class="text-2xl">🎬</span>
+            </div>
+            <p id="statsMovies" 
+               class="text-3xl font-bold text-gray-900">
+              -
+            </p>
+          </div>
+          
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-medium text-gray-600">
+                Canciones Analizadas
+              </h3>
+              <span class="text-2xl">🎵</span>
+            </div>
+            <p id="statsSongs" 
+               class="text-3xl font-bold text-gray-900">
+              -
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-gray-200 mt-12">
+    <div class="container mx-auto px-4 py-6">
+      <div class="text-center text-sm text-gray-600">
+        <p>
+          ChePlay - Sistema de recomendaciones con algoritmos avanzados
+        </p>
+        <p class="mt-1">
+          BFS • DFS • Dijkstra • Prim • Kruskal • Dynamic Programming • 
+          Branch & Bound
+        </p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- JavaScript Modules -->
+  <script type="module" src="/js/app.js"></script>
 </body>
 </html>
