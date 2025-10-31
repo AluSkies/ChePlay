@@ -38,7 +38,7 @@ public class FriendRecommendationServiceTest {
         when(db.readList(anyString(), isNull(), any())).thenReturn((List<Object>) (List<?>) globalEdges);
         when(db.readList(anyString(), anyMap(), any())).thenAnswer(inv -> {
             Map<String, Object> params = inv.getArgument(1);
-            if (params != null && "Alan".equals(params.get("userId"))) {
+            if (params != null && "Alan".equals(params.get("userI d"))) {
                 return (List<Object>) (List<?>) alanNeighbors;
             }
             return (List<Object>) (List<?>) globalEdges;
