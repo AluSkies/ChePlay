@@ -53,9 +53,6 @@ Abrí `http://localhost:8080` para acceder a la interfaz web moderna con:
 - Arquitectura JavaScript modular ES6
 - Notificaciones toast y animaciones suaves
 
-Mirá `src/main/resources/static/FRONTEND_README.md` para documentación 
-detallada del frontend.
-
 ---
 ## Endpoints de la API REST
 
@@ -89,9 +86,6 @@ GET /api/trending/global?k={k}
 ```
 GET /api/playlist/generate?user={user}&size={n}&uniqueArtist={bool}&minDuration={sec}&maxDuration={sec}
 ```
-
-Para documentación completa de la API, mirá `MOVIE_RECOMMENDATIONS_README.md`.
-
 ---
 ## Referencia de Algoritmos
 | Algoritmo | Propósito en el pipeline |
@@ -156,9 +150,4 @@ Esto crea:
 * Manejo de errores: excepciones específicas, try/catch solo en llamadas 
   externas
 * Comillas simples en JS/TS, comillas dobles en Python
-
-### Documentación
-* Guía frontend: `src/main/resources/static/FRONTEND_README.md`
-* Detalles de implementación: `FRONTEND_ENHANCEMENT_SUMMARY.md`
-* Características de películas: `MOVIE_RECOMMENDATIONS_README.md`
 
