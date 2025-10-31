@@ -1,7 +1,8 @@
 package org.cheplay.controller;
 
-import java.util.Map;
-
+import org.cheplay.controller.playlist.PlaylistConstraintsFactory;
+import org.cheplay.controller.playlist.PlaylistResponseMapper;
+import org.cheplay.dto.PlaylistResponse;
 import org.cheplay.model.playlist.GeneratedPlaylist;
 import org.cheplay.model.playlist.PlaylistConstraints;
 import org.cheplay.model.playlist.PlaylistGeneratorService;
@@ -16,39 +17,32 @@ import org.springframework.web.bind.annotation.RestController;
 public class PlaylistController {
 
     private final PlaylistGeneratorService playlistGeneratorService;
+        private final PlaylistConstraintsFactory constraintsFactory;
+        private final PlaylistResponseMapper responseMapper;
 
-    public PlaylistController(PlaylistGeneratorService playlistGeneratorService) {
-        this.playlistGeneratorService = playlistGeneratorService;
+        public PlaylistController(PlaylistGeneratorService playlistGeneratorService,
+                                                          PlaylistConstraintsFactory constraintsFactory,
+                                                          PlaylistResponseMapper responseMapper) {
+                this.playlistGeneratorService = playlistGeneratorService;
+                this.constraintsFactory = constraintsFactory;
+                this.responseMapper = responseMapper;
     }
 
-    @GetMapping(value = "/generate")
-    public ResponseEntity<?> generate(@RequestParam("user") String userId,
-                                       @RequestParam(value = "size", defaultValue = "5") int size,
-                                       @RequestParam(value = "uniqueArtist", defaultValue = "true") boolean uniqueArtist,
-                                       @RequestParam(value = "minDuration", required = false) Integer minDuration,
-                                       @RequestParam(value = "maxDuration", required = false) Integer maxDuration) {
-        PlaylistConstraints constraints = PlaylistConstraints.builder(size)
-                .uniqueArtist(uniqueArtist)
-                .minTotalDuration(minDuration)
-                .maxTotalDuration(maxDuration)
-                .build();
+	@GetMapping(value = "/generate")
+	public ResponseEntity<PlaylistResponse> generate(@RequestParam("user") String userId,
+                                                                           @RequestParam(value = "size", defaultValue = "5") int size,
+                                                                           @RequestParam(value = "uniqueArtist", defaultValue = "true") boolean uniqueArtist,
+                                                                           @RequestParam(value = "minDuration", required = false) Integer minDuration,
+                                                                           @RequestParam(value = "maxDuration", required = false) Integer maxDuration) {
+                PlaylistConstraints constraints = constraintsFactory.create(size, uniqueArtist, minDuration, maxDuration);
 
-        return playlistGeneratorService.generatePlaylist(userId, constraints)
-                .<ResponseEntity<?>>map(playlist -> ResponseEntity.ok(buildResponse(playlist)))
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                return playlistGeneratorService.generatePlaylist(userId, constraints)
+                                .map(this::toResponse)
+                                .map(ResponseEntity::ok)
+                                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    private Map<String, Object> buildResponse(GeneratedPlaylist playlist) {
-        return Map.of(
-                "size", playlist.size(),
-                "totalDuration", playlist.getTotalDuration(),
-                "songs", playlist.getSongs().stream().map(song -> Map.of(
-                        "id", song.getId(),
-                        "title", song.getTitle(),
-                        "artist", song.getArtist(),
-                        "duration", song.getDurationSeconds(),
-                        "popularity", song.getPopularity()
-                )).toList()
-        );
+	private PlaylistResponse toResponse(GeneratedPlaylist playlist) {
+                return responseMapper.toResponse(playlist);
     }
 }
