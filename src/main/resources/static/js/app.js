@@ -97,11 +97,40 @@ async function handleFriendRecommendations() {
   }
   
   try {
-    UI.showLoading('friendResults');
-    document.getElementById('friendResults').classList.remove('hidden');
+    const friendResultsElement = document.getElementById('friendResults');
+    friendResultsElement.classList.remove('hidden');
+    
+    // Show loading spinner inside the container
+    friendResultsElement.innerHTML = `
+      <div class="flex justify-center items-center py-8">
+        <div class="loading-spinner"></div>
+      </div>
+    `;
     
     const data = await api.recommendations.getClosest(user, k);
     state.lastResults.friends = data;
+    
+    // Clear loading and render results
+    friendResultsElement.innerHTML = `
+      <div>
+        <h3 class="text-sm font-semibold text-gray-700 mb-2">
+          Conexiones Directas
+        </h3>
+        <div id="friendDirect" class="space-y-2"></div>
+      </div>
+      <div>
+        <h3 class="text-sm font-semibold text-gray-700 mb-2">
+          Por Camino Más Corto
+        </h3>
+        <div id="friendShortest" class="space-y-2"></div>
+      </div>
+      <div>
+        <h3 class="text-sm font-semibold text-gray-700 mb-2">
+          Amigo Más Cercano
+        </h3>
+        <div id="friendClosest" class="space-y-2"></div>
+      </div>
+    `;
     
     // Render results
     renderFriendResults(data);
@@ -112,31 +141,44 @@ async function handleFriendRecommendations() {
     UI.showToast('Recomendaciones obtenidas', 'success', 2000);
   } catch (error) {
     console.error('Error fetching friend recommendations:', error);
-    UI.showToast('Error al obtener recomendaciones', 'error');
-    document.getElementById('friendResults').innerHTML = 
+    const friendResultsElement = document.getElementById('friendResults');
+    friendResultsElement.innerHTML = 
       UI.createEmptyState('Error al cargar recomendaciones', '❌');
+    UI.showToast('Error al obtener recomendaciones', 'error');
   }
 }
 
 function renderFriendResults(data) {
+  const sharedSongs = data.sharedSongs || {};
+  
   // Direct recommendations
   const directHtml = UI.createList(
     data.directRecommendations || [],
-    (item) => UI.createResultCard(item, 'friend')
+    (item) => {
+      const friendId = item.id;
+      const sharedSongsList = sharedSongs[friendId] || [];
+      return UI.createFriendCard(item, sharedSongsList, 'weight');
+    }
   );
   UI.setElementContent('friendDirect', directHtml);
   
   // Shortest path recommendations
   const shortestHtml = UI.createList(
     data.shortestPathRecommendations || [],
-    (item) => UI.createResultCard(item, 'friend')
+    (item) => {
+      const friendId = item.id;
+      const sharedSongsList = sharedSongs[friendId] || [];
+      return UI.createFriendCard(item, sharedSongsList, 'distance');
+    }
   );
   UI.setElementContent('friendShortest', shortestHtml);
   
   // Closest friend
   const closest = data.closest;
   if (closest) {
-    const closestHtml = UI.createResultCard(closest, 'friend');
+    const closestId = closest.id;
+    const closestSharedSongs = sharedSongs[closestId] || [];
+    const closestHtml = UI.createFriendCard(closest, closestSharedSongs, 'distance', true);
     UI.setElementContent('friendClosest', closestHtml);
   } else {
     UI.setElementContent(

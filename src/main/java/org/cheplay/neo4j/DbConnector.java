@@ -46,7 +46,7 @@ public class DbConnector implements AutoCloseable {
         String user = System.getenv().getOrDefault("NEO4J_USER", "neo4j");
         String pass = System.getenv().getOrDefault("NEO4J_PASSWORD", "changeme");
         return new DbConnector(uri, user, pass);
-    }
+    } 
 
     public DbConnector open() {
         // Only create a Driver if not provided externally

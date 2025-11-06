@@ -56,14 +56,14 @@ public class RecommendationController {
         }
 
         List<Map<String, Object>> neighborsWithSongs = service.getNeighborsWithSharedSongs(user);
-        Map<String, List<String>> sharedSongs = new java.util.HashMap<>();
+        Map<String, List<Map<String, Object>>> sharedSongs = new java.util.HashMap<>();
         for (Map<String, Object> entry : neighborsWithSongs) {
             Object nb = entry.get("neighbor");
             if (nb == null) continue;
             String nbKey = nb.toString();
             if (neighbors.contains(nbKey)) {
                 @SuppressWarnings("unchecked")
-                List<String> songs = (List<String>) entry.get("songs");
+                List<Map<String, Object>> songs = (List<Map<String, Object>>) entry.get("songs");
                 sharedSongs.put(nbKey, songs);
             }
         }

@@ -202,17 +202,33 @@ public class FriendRecommendationService {
             }
 
                 /**
-                 * Devuelve vecinos junto con las canciones compartidas (lista de ids/nombres de song) y el overlap.
-                 * Cada elemento es un Map con keys: neighbor (String), overlap (long), weight (double), songs (List<String>)
+                 * Devuelve vecinos junto con las canciones compartidas (lista de objetos con id, title, artist) y el overlap.
+                 * Cada elemento es un Map con keys: neighbor (String), overlap (long), weight (double), songs (List<Map<String, Object>>)
                  */
                 public List<Map<String, Object>> getNeighborsWithSharedSongs(String userId) {
                         String cypher = "MATCH (p1:User) WHERE toLower(coalesce(p1.id,p1.nombre,p1.name)) = toLower($userId) " +
                                         "MATCH (p1)-[:LIKED_SONG]->(s:Song)<-[:LIKED_SONG]-(p2:User) " +
-                                        "WITH coalesce(p2.id,p2.nombre,p2.name) AS neighbor, collect(DISTINCT coalesce(s.id,s.name,s.title)) AS songs, count(DISTINCT s) AS overlap " +
-                                        "WHERE overlap > 0 RETURN neighbor, overlap, 1.0/(overlap+1.0) AS weight, songs ORDER BY overlap DESC";
+                                        "WITH coalesce(p2.id,p2.nombre,p2.name) AS neighbor, s " +
+                                        "WITH neighbor, collect(DISTINCT s) AS songsList " +
+                                        "WITH neighbor, songsList, size(songsList) AS overlap " +
+                                        "WHERE overlap > 0 " +
+                                        "UNWIND songsList AS s " +
+                                        "WITH neighbor, overlap, 1.0/(overlap+1.0) AS weight, " +
+                                        "     {id: coalesce(s.id,s.name,s.title), " +
+                                        "      title: coalesce(s.title,s.name,s.id), " +
+                                        "      artist: coalesce(s.artist,s.band,'')} AS song " +
+                                        "WITH neighbor, overlap, weight, collect(DISTINCT song) AS songs " +
+                                        "RETURN neighbor, overlap, weight, songs ORDER BY overlap DESC";
 
                         return db.readList(cypher, Map.of("userId", userId), (Record r) -> {
-                                List<String> songs = r.get("songs").asList(v -> v.asString());
+                                List<Map<String, Object>> songs = r.get("songs").asList(v -> {
+                                        Map<String, Object> songMap = v.asMap();
+                                        Map<String, Object> song = new HashMap<>();
+                                        song.put("id", songMap.get("id"));
+                                        song.put("title", songMap.get("title"));
+                                        song.put("artist", songMap.get("artist"));
+                                        return song;
+                                });
                                 return Map.of(
                                                 "neighbor", r.get("neighbor").asString(),
                                                 "overlap", r.get("overlap").asLong(),
