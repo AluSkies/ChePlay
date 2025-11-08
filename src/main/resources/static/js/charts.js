@@ -107,131 +107,38 @@ export const Charts = {
     const ctx = canvas.getContext('2d');
     
     // Prepare data for scatter plot (simulating network)
-    const userNode = { 
-      x: 0, 
-      y: 0, 
-      label: data.user || 'Usuario',
-      type: 'user',
-      id: data.user
-    };
-    
-    // Direct recommendations (inner circle)
-    const directNodes = (data.directRecommendations || []).map((f, i, arr) => {
-      const angle = (i * 2 * Math.PI) / Math.max(arr.length, 1);
-      return {
-        x: Math.cos(angle) * 30,
-        y: Math.sin(angle) * 30,
-        label: f.label || f.name || f.id,
-        type: 'direct',
-        weight: f.weight,
-        id: f.id
-      };
-    });
-    
-    // Shortest path recommendations (outer circle)
-    const shortestNodes = (data.shortestPathRecommendations || []).map((f, i, arr) => {
-      const angle = (i * 2 * Math.PI) / Math.max(arr.length, 1);
-      return {
-        x: Math.cos(angle) * 50,
-        y: Math.sin(angle) * 50,
-        label: f.label || f.name || f.id,
-        type: 'shortest',
-        distance: f.distance,
-        id: f.id
-      };
-    });
-    
-    // Closest friend (highlighted)
-    const closestNode = data.closest ? {
-      x: 0,
-      y: -40,
-      label: data.closest.label || data.closest.name || data.closest.id,
-      type: 'closest',
-      distance: data.closest.distance,
-      id: data.closest.id
-    } : null;
-    
-    // Collect all nodes for drawing connections
-    const allNodes = [userNode, ...directNodes, ...shortestNodes];
-    if (closestNode) {
-      allNodes.push(closestNode);
-    }
-    
-    const datasets = [
-      {
-        label: 'Usuario',
-        data: [userNode],
-        backgroundColor: this.colors.primary,
-        pointRadius: 20,
-        pointHoverRadius: 22,
-        borderWidth: 2,
-        borderColor: '#667eea'
-      }
-    ];
-    
-    if (directNodes.length > 0) {
-      datasets.push({
-        label: 'Conexiones directas',
-        data: directNodes,
-        backgroundColor: this.colors.success,
-        pointRadius: 15,
-        pointHoverRadius: 17,
-        borderWidth: 2,
-        borderColor: '#10b981'
-      });
-    }
-    
-    if (shortestNodes.length > 0) {
-      datasets.push({
-        label: 'Por camino más corto',
-        data: shortestNodes,
-        backgroundColor: '#f59e0b',
-        pointRadius: 12,
-        pointHoverRadius: 14,
-        borderWidth: 2,
-        borderColor: '#d97706'
-      });
-    }
-    
-    if (closestNode) {
-      datasets.push({
-        label: 'Amigo más cercano',
-        data: [closestNode],
-        backgroundColor: '#ef4444',
-        pointRadius: 18,
-        pointHoverRadius: 20,
-        borderWidth: 3,
-        borderColor: '#dc2626'
-      });
-    }
-
-    // Custom plugin to draw connections and labels
-    const self = this;
-    const networkPlugin = {
-      id: 'networkConnections',
-      afterDraw: (chart) => {
-        self.drawNetworkConnections(chart, userNode, allNodes);
-        self.drawNodeLabels(chart, allNodes);
-      }
-    };
+    const userNode = { x: 0, y: 0, label: data.user };
+    const directNodes = (data.directRecommendations || []).map((f, i) => ({
+      x: Math.cos(i * 2 * Math.PI / 8) * 30,
+      y: Math.sin(i * 2 * Math.PI / 8) * 30,
+      label: f.label || f.name || f.id
+    }));
 
     const chart = new Chart(ctx, {
       type: 'scatter',
-      data: { datasets },
-      plugins: [networkPlugin],
+      data: {
+        datasets: [
+          {
+            label: 'Usuario',
+            data: [userNode],
+            backgroundColor: this.colors.primary,
+            pointRadius: 15,
+            pointHoverRadius: 18
+          },
+          {
+            label: 'Conexiones directas',
+            data: directNodes,
+            backgroundColor: this.colors.success,
+            pointRadius: 10,
+            pointHoverRadius: 13
+          }
+        ]
+      },
       options: {
         ...this.getBaseOptions('Red de Conexiones'),
         scales: {
-          x: { 
-            display: false,
-            min: -60,
-            max: 60
-          },
-          y: { 
-            display: false,
-            min: -60,
-            max: 60
-          }
+          x: { display: false },
+          y: { display: false }
         },
         plugins: {
           ...this.getBaseOptions().plugins,
@@ -240,20 +147,9 @@ export const Charts = {
             callbacks: {
               label: (context) => {
                 const point = context.raw;
-                let label = point.label || 'Usuario';
-                if (point.weight) {
-                  label += ` (Peso: ${point.weight.toFixed(3)})`;
-                }
-                if (point.distance) {
-                  label += ` (Distancia: ${point.distance.toFixed(3)})`;
-                }
-                return label;
+                return point.label || 'Usuario';
               }
             }
-          },
-          legend: {
-            display: true,
-            position: 'bottom'
           }
         }
       }
@@ -261,118 +157,6 @@ export const Charts = {
 
     this.instances['friendNetworkChart'] = chart;
     return chart;
-  },
-
-  drawNetworkConnections(chart, centerNode, allNodes) {
-    const ctx = chart.ctx;
-    const meta = chart.getDatasetMeta(0);
-    const centerPoint = meta.data[0];
-    
-    if (!centerPoint) return;
-    
-    const centerX = centerPoint.x;
-    const centerY = centerPoint.y;
-    
-    // Draw lines from center to all other nodes
-    allNodes.forEach((node, nodeIndex) => {
-      if (node.type === 'user') return; // Skip center node
-      
-      // Find the dataset and point for this node
-      let targetPoint = null;
-      for (let i = 0; i < chart.data.datasets.length; i++) {
-        const datasetMeta = chart.getDatasetMeta(i);
-        const nodeDataIndex = chart.data.datasets[i].data.findIndex(d => d.id === node.id);
-        if (nodeDataIndex >= 0 && datasetMeta.data[nodeDataIndex]) {
-          targetPoint = datasetMeta.data[nodeDataIndex];
-          break;
-        }
-      }
-      
-      if (!targetPoint) return;
-      
-      const targetX = targetPoint.x;
-      const targetY = targetPoint.y;
-      
-      // Determine line color based on node type
-      let lineColor = 'rgba(156, 163, 175, 0.3)'; // default gray
-      if (node.type === 'direct') {
-        lineColor = 'rgba(16, 185, 129, 0.4)'; // green
-      } else if (node.type === 'shortest') {
-        lineColor = 'rgba(245, 158, 11, 0.4)'; // orange
-      } else if (node.type === 'closest') {
-        lineColor = 'rgba(239, 68, 68, 0.4)'; // red
-      }
-      
-      // Draw line
-      ctx.save();
-      ctx.strokeStyle = lineColor;
-      ctx.lineWidth = 2;
-      ctx.setLineDash([]);
-      ctx.beginPath();
-      ctx.moveTo(centerX, centerY);
-      ctx.lineTo(targetX, targetY);
-      ctx.stroke();
-      ctx.restore();
-    });
-  },
-
-  drawNodeLabels(chart, allNodes) {
-    const ctx = chart.ctx;
-    
-    allNodes.forEach((node) => {
-      // Find the dataset and point for this node
-      let targetPoint = null;
-      let datasetIndex = -1;
-      let nodeDataIndex = -1;
-      
-      for (let i = 0; i < chart.data.datasets.length; i++) {
-        const nodeIdx = chart.data.datasets[i].data.findIndex(d => d.id === node.id);
-        if (nodeIdx >= 0) {
-          const datasetMeta = chart.getDatasetMeta(i);
-          if (datasetMeta.data[nodeIdx]) {
-            targetPoint = datasetMeta.data[nodeIdx];
-            datasetIndex = i;
-            nodeDataIndex = nodeIdx;
-            break;
-          }
-        }
-      }
-      
-      if (!targetPoint) return;
-      
-      const x = targetPoint.x;
-      const y = targetPoint.y;
-      
-      // Get node radius based on type
-      let radius = 10;
-      if (node.type === 'user') radius = 20;
-      else if (node.type === 'closest') radius = 18;
-      else if (node.type === 'direct') radius = 15;
-      else if (node.type === 'shortest') radius = 12;
-      
-      // Prepare label text (shorten if too long)
-      let labelText = node.label || node.id || 'Usuario';
-      if (labelText.length > 8) {
-        labelText = labelText.substring(0, 6) + '...';
-      }
-      
-      // Draw text background circle for better visibility
-      ctx.save();
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-      ctx.beginPath();
-      ctx.arc(x, y, radius * 0.7, 0, 2 * Math.PI);
-      ctx.fill();
-      ctx.restore();
-      
-      // Draw label text
-      ctx.save();
-      ctx.fillStyle = '#1f2937';
-      ctx.font = 'bold 10px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(labelText, x, y);
-      ctx.restore();
-    });
   },
 
   // ==================== Shared Songs Bar Chart ====================
@@ -535,7 +319,11 @@ export const Charts = {
       label: algo.toUpperCase(),
       data: results[algo].map((item, i) => ({
         x: i + 1,
-        y: item.score || 0
+        y: item.score || 0,
+        title: item.title || item.id || `Película ${i + 1}`,
+        genre: item.genre || null,
+        year: item.year || null,
+        movieData: item
       })),
       borderColor: this.colors.getColorPalette(algorithms.length)[index],
       backgroundColor: 
@@ -552,6 +340,32 @@ export const Charts = {
       data: { datasets },
       options: {
         ...this.getBaseOptions('Comparación de Algoritmos'),
+        plugins: {
+          tooltip: {
+            callbacks: {
+              title: (context) => {
+                const dataPoint = context[0].raw;
+                return dataPoint.title || `Ranking ${dataPoint.x}`;
+              },
+              label: (context) => {
+                const algo = context.dataset.label;
+                const score = context.parsed.y.toFixed(3);
+                return `${algo}: ${score}`;
+              },
+              afterLabel: (context) => {
+                const dataPoint = context.raw;
+                const info = [];
+                if (dataPoint.genre) {
+                  info.push(`Género: ${dataPoint.genre}`);
+                }
+                if (dataPoint.year) {
+                  info.push(`Año: ${dataPoint.year}`);
+                }
+                return info;
+              }
+            }
+          }
+        },
         scales: {
           x: {
             type: 'linear',
@@ -773,4 +587,6 @@ export const Charts = {
     });
   }
 };
+
+
 
