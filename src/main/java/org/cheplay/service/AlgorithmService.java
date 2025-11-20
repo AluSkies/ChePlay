@@ -6,6 +6,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import org.cheplay.algorithm.adapters.MstResult;
+import org.cheplay.algorithm.adapters.MstSolver;
+import org.cheplay.algorithm.adapters.ShortestPathSolver;
 import org.cheplay.algorithm.backtracking.BacktrackingExamples;
 import org.cheplay.algorithm.branchandbound.BranchAndBoundExamples;
 import org.cheplay.algorithm.divideandconquer.MergeSort;
@@ -15,8 +18,6 @@ import org.cheplay.algorithm.graph.BFS;
 import org.cheplay.algorithm.graph.DFS;
 import org.cheplay.algorithm.greedy.GreedyExamples;
 import org.cheplay.algorithm.mst.Kruskal;
-import org.cheplay.algorithm.mst.Prim;
-import org.cheplay.algorithm.shortestpath.Dijkstra;
 import org.cheplay.dto.AlgorithmRequest;
 import org.cheplay.neo4j.DynamicGraphAdapter;
 import org.springframework.stereotype.Service;
@@ -24,9 +25,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class AlgorithmService {
     private final DynamicGraphAdapter dynamicGraphAdapter;
-
-    public AlgorithmService(DynamicGraphAdapter dynamicGraphAdapter) {
+    private final ShortestPathSolver shortestPathSolver;
+    private final MstSolver mstSolver;
+    public AlgorithmService(DynamicGraphAdapter dynamicGraphAdapter, ShortestPathSolver shortestPathSolver, MstSolver mstSolver) {
         this.dynamicGraphAdapter = dynamicGraphAdapter;
+        this.shortestPathSolver = shortestPathSolver;
+        this.mstSolver = mstSolver;
     }
 
     public Object runBFS(AlgorithmRequest req) {
@@ -44,12 +48,13 @@ public class AlgorithmService {
 
     public Object runDijkstra(AlgorithmRequest req) {
         Map<String, Map<String, Double>> adj = dynamicGraphAdapter.buildAdjacency(req);
-        return Dijkstra.dijkstra(adj, req.start);
+        Map<String, Double> distances = shortestPathSolver.multiSourceDijkstra(adj, java.util.List.of(req.start));
+        return Map.of("distances", distances);
     }
 
-    public Object runPrim(AlgorithmRequest req) {
+    public MstResult runPrim(AlgorithmRequest req) {
         Map<String, Map<String, Double>> adj = dynamicGraphAdapter.buildAdjacency(req);
-        return Prim.minimumSpanningTree(adj, req.start);
+        return mstSolver.minimumSpanningTree(adj, req.start);
     }
 
     public Object runKruskal(AlgorithmRequest req) {

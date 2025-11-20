@@ -10,7 +10,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.cheplay.algorithm.shortestpath.Dijkstra;
+import org.cheplay.algorithm.adapters.ShortestPathSolver;
 import org.cheplay.model.graph.GraphRelationship;
 import org.cheplay.neo4j.DbConnector;
 import org.neo4j.driver.Record;
@@ -27,13 +27,15 @@ import org.springframework.stereotype.Service;
 @Service
 public class FriendRecommendationService {
 
-    private final DbConnector db;
+        private final DbConnector db;
         private final FriendRecommendationMapper mapper;
+        private final ShortestPathSolver shortestPathSolver;
 
-        public FriendRecommendationService(DbConnector db, FriendRecommendationMapper mapper) {
-        this.db = Objects.requireNonNull(db, "DbConnector");
+        public FriendRecommendationService(DbConnector db, FriendRecommendationMapper mapper, ShortestPathSolver shortestPathSolver) {
+                this.db = Objects.requireNonNull(db, "DbConnector");
                 this.mapper = Objects.requireNonNull(mapper);
-    }
+                this.shortestPathSolver = Objects.requireNonNull(shortestPathSolver);
+        }
 
     // Consulta global (puede usarse para construir el grafo completo)
     private static final String GLOBAL_CYPHER =
@@ -103,16 +105,8 @@ public class FriendRecommendationService {
                 String sourceKey = resolveKey(adj, userId);
                 if (sourceKey == null) return List.of();
 
-                Map<String, Object> res = Dijkstra.dijkstra(adj, sourceKey);
-                @SuppressWarnings("unchecked")
-                Map<String, Double> distances = (Map<String, Double>) res.get("distances");
-
-                List<Map.Entry<String, Double>> ranked = distances.entrySet().stream()
-                                .filter(e -> !e.getKey().equals(sourceKey) && !Double.isInfinite(e.getValue()))
-                                .sorted(Map.Entry.comparingByValue())
-                                .limit(k <= 0 ? Integer.MAX_VALUE : k)
-                                .collect(Collectors.toList());
-
+                Map<String, Double> distances = shortestPathSolver.multiSourceDijkstra(adj, List.of(sourceKey));
+                java.util.List<Map.Entry<String, Double>> ranked = RecommendationHelpers.rankDistances(distances, sourceKey, k);
                 return mapper.decorateRankedUsers(ranked, "distance");
     }
 
@@ -126,17 +120,10 @@ public class FriendRecommendationService {
                 String sourceKey = resolveKey(adj, userId);
                 if (sourceKey == null) return null;
 
-                Map<String, Object> res = Dijkstra.dijkstra(adj, sourceKey);
-                @SuppressWarnings("unchecked")
-                Map<String, Double> distances = (Map<String, Double>) res.get("distances");
-
-                Map.Entry<String, Double> best = distances.entrySet().stream()
-                                .filter(e -> !e.getKey().equals(sourceKey) && !Double.isInfinite(e.getValue()))
-                                .min(Map.Entry.comparingByValue())
-                                .orElse(null);
-
-                if (best == null) return null;
-                return mapper.decorateRankedUsers(List.of(best), "distance").stream().findFirst().orElse(null);
+                Map<String, Double> distances = shortestPathSolver.multiSourceDijkstra(adj, List.of(sourceKey));
+                java.util.List<Map.Entry<String, Double>> rankedAll = RecommendationHelpers.rankDistances(distances, sourceKey, 1);
+                if (rankedAll.isEmpty()) return null;
+                return mapper.decorateRankedUsers(rankedAll, "distance").stream().findFirst().orElse(null);
         }
 
         // Helper: try exact match, then case-insensitive match of keys in adjacency map
@@ -278,16 +265,8 @@ public class FriendRecommendationService {
                         int userNeighborCount = 0;
 
                         if (sourceKey != null) {
-                                Map<String, Object> dijkstraRes = Dijkstra.dijkstra(adj, sourceKey);
-                                @SuppressWarnings("unchecked")
-                                Map<String, Double> distances = (Map<String, Double>) dijkstraRes.get("distances");
-
-                                List<Map.Entry<String, Double>> shortestEntries = distances.entrySet().stream()
-                                        .filter(e -> !e.getKey().equals(sourceKey) && !Double.isInfinite(e.getValue()))
-                                        .sorted(Map.Entry.comparingByValue())
-                                        .limit(cappedLimit)
-                                        .collect(Collectors.toList());
-
+                                Map<String, Double> distances = shortestPathSolver.multiSourceDijkstra(adj, List.of(sourceKey));
+                                java.util.List<Map.Entry<String, Double>> shortestEntries = RecommendationHelpers.rankDistances(distances, sourceKey, cappedLimit);
                                 shortest = mapper.decorateRankedUsers(shortestEntries, "distance");
                                 closest = shortest.isEmpty() ? null : shortest.get(0);
 

@@ -1,9 +1,7 @@
-package org.cheplay.controller;
+package org.cheplay.controller.trending;
 
 import java.util.List;
 
-import org.cheplay.controller.trending.TrendingRequest;
-import org.cheplay.controller.trending.TrendingRequestFactory;
 import org.cheplay.dto.SongPlay;
 import org.cheplay.model.trending.TrendingGlobalService;
 import org.springframework.http.MediaType;
