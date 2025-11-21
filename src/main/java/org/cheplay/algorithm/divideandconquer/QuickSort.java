@@ -21,7 +21,7 @@ import java.util.Map;
  */
 public class QuickSort {
 
-    public static LinkedHashMap<String, Integer> quicksort(LinkedHashMap<String, Integer> map) {
+    public static LinkedHashMap<String, Integer> quicksort(Map<String, Integer> map) {
         if (map == null || map.size() <= 1) return map == null ? new LinkedHashMap<>() : new LinkedHashMap<>(map);
 
         // paso a lista porque es más mejor, más cool

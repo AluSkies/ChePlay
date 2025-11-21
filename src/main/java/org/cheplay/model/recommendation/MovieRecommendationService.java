@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.cheplay.algorithm.divideandconquer.MergeSort;
+import org.cheplay.algorithm.divideandconquer.QuickSort;
 import org.cheplay.algorithm.graph.BFS;
 import org.cheplay.algorithm.graph.DFS;
 import org.cheplay.algorithm.mst.Kruskal;
@@ -306,7 +307,7 @@ public class MovieRecommendationService {
         }
 
         LinkedHashMap<String, Integer> sortedScores =
-            MergeSort.mergeSortByValue(scores);
+            QuickSort.quicksort(scores);
 
         // Filter out watched movies and convert to Double scores
         // MergeSort sorts descending (highest first), so we take top k
