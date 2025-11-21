@@ -5,6 +5,18 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Este algoritmo ordena elementos dividiendo recursivamente la lista en
+ * mitades, ordenando cada mitad, y luego fusionando las mitades ordenadas.
+ * Garantiza ordenamiento estable y rendimiento consistente O(n log n).
+ * Ordena en orden descendente por valor.
+ * 
+ * Complejidad Temporal: O(elementos × log(elementos)) - Complejidad temporal
+ *                       linealítmica
+ * Complejidad Espacial: O(elementos) - Complejidad espacial lineal
+ *                       (para arreglos temporales durante las operaciones de
+ *                       fusión)
+ */
 public class MergeSort {
 
     public static LinkedHashMap<String, Integer> mergeSortByValue(Map<String, Integer> map) {

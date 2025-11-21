@@ -2,6 +2,21 @@ package org.cheplay.algorithm.dynamic;
 
 import java.util.*;
 
+/**
+ * Este algoritmo resuelve el problema de la mochila construyendo una tabla
+ * 2D donde dp[i][c] representa el valor máximo alcanzable usando los primeros
+ * i elementos con capacidad c. Utiliza subestructura óptima y memoización
+ * para evitar recalcular subproblemas, garantizando una solución óptima.
+ * 
+ * Complejidad Temporal: O(elementos × capacidad) - Complejidad temporal
+ *                       pseudo-polinómica
+ * Complejidad Espacial: O(elementos × capacidad) - Complejidad espacial
+ *                       pseudo-polinómica
+ * 
+ * Nota: Esto es pseudo-polinómico porque la complejidad depende del valor
+ * numérico de la capacidad, no solo del número de elementos. Para valores
+ * grandes de capacidad, esto puede ser costoso.
+ */
 public class DynamicProgrammingExamples {
     public static Map<String, Object> knapsackDP(Map<String, Object> params) {
         int capacity = (int) params.getOrDefault("capacity", 0);

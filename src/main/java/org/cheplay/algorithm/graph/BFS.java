@@ -2,6 +2,16 @@ package org.cheplay.algorithm.graph;
 
 import java.util.*;
 
+/**
+ * Este algoritmo recorre un grafo nivel por nivel, explorando todos los
+ * vecinos de un nodo antes de pasar al siguiente nivel. Utiliza una cola
+ * (FIFO) para mantener el orden de exploración, garantizando que los nodos
+ * más cercanos se visiten primero.
+ * 
+ * Complejidad Temporal: O(nodos + aristas) - Complejidad temporal lineal
+ * Complejidad Espacial: O(nodos) - Complejidad espacial lineal
+
+ */
 public class BFS {
     public static List<String> bfs(Map<String, Map<String, Double>> adj, String start) {
         if (start == null || !adj.containsKey(start)) return Collections.emptyList();

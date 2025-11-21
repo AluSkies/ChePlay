@@ -6,12 +6,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 
+/**
+ * Este algoritmo encuentra eficientemente los K elementos principales de
+ * una colección usando un min-heap de tamaño K. Mantiene solo los K elementos
+ * más grandes vistos hasta ahora, haciéndolo más eficiente que ordenar toda
+ * la colección cuando K es mucho menor que el número total de elementos.
+ * 
+ * Complejidad Temporal: O(elementos × log(topK)) - Complejidad temporal
+ *                       linealítmica (más eficiente que O(elementos × log(elementos))
+ *                       cuando topK << elementos)
+ * Complejidad Espacial: O(topK) - Complejidad espacial lineal
+ *                       (solo almacena K elementos en el heap)
+ */
 public class GreedyExamples {
 
     /**
-     * @param songs  Map<songId, plays>
-     * @param k      número de canciones a devolver
-     * @return Lista ordenada descendentemente por plays (id, plays)
+     * Encuentra las K canciones principales por conteo de reproducción usando
+     * un enfoque codicioso basado en heap.
+     * 
      */
     public static List<Map.Entry<String, Integer>> topKGreedy(Map<String, Integer> songs, int k) {
         if (songs == null || songs.isEmpty() || k <= 0) return List.of();

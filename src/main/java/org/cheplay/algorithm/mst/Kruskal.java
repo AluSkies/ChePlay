@@ -2,6 +2,17 @@ package org.cheplay.algorithm.mst;
 
 import java.util.*;
 
+/**
+ * Este algoritmo encuentra un árbol de expansión mínima ordenando todas las
+ * aristas por peso y agregando codiciosamente aristas que conectan dos
+ * componentes diferentes, usando la estructura de datos Union-Find para
+ * detectar ciclos. Garantiza un árbol de expansión mínima sin requerir un
+ * nodo inicial.
+ * 
+ * Complejidad Temporal: O(aristas × log(aristas)) - Complejidad temporal
+ * linealítmica
+ * Complejidad Espacial: O(nodos + aristas) - Complejidad espacial lineal
+ */
 public class Kruskal {
     public static Map<String, Object> minimumSpanningTree(Map<String, Map<String, Double>> adj) {
         List<Edge> edges = new ArrayList<>();

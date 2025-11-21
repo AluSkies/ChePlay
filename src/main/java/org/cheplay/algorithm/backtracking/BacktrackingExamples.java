@@ -2,6 +2,19 @@ package org.cheplay.algorithm.backtracking;
 
 import java.util.*;
 
+/**
+ * Este algoritmo encuentra todas las soluciones válidas al problema de las
+ * N-Reinas colocando sistemáticamente reinas fila por fila y retrocediendo
+ * cuando una colocación lleva a un conflicto. Explora todas las configuraciones
+ * posibles para encontrar todas las soluciones válidas.
+ * 
+ * Complejidad Temporal: O(2^elementos) - Complejidad temporal exponencial
+ *                       (en el peor caso, explora todas las colocaciones
+ *                       posibles de reinas)
+ * Complejidad Espacial: O(elementos) - Complejidad espacial lineal
+ *                       (para la pila de recursión y el arreglo de seguimiento
+ *                       de columnas)
+ */
 public class BacktrackingExamples {
     public static List<List<String>> solveNQueens(Map<String, Object> params) {
         int n = (int) params.getOrDefault("n", 4);

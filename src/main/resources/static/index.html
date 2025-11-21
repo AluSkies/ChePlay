@@ -158,7 +158,7 @@
           <h2 class="text-xl font-bold text-gray-800 mb-4 
                      flex items-center gap-2">
             <span>🎵</span>
-            Recomendación de Canciones (Prim)
+            Recomendación de Canciones (Prim - O(edges × log(nodes)))
           </h2>
           
           <div class="space-y-4">
@@ -343,10 +343,10 @@
                       class="w-full px-3 py-2 border border-gray-300 
                              rounded-lg focus:ring-2 focus:ring-purple-500 
                              focus:border-transparent">
-                <option value="bfs">BFS (Amplitud)</option>
-                <option value="dfs">DFS (Profundidad)</option>
-                <option value="diverse">Kruskal (Diverso)</option>
-                <option value="sorted">MergeSort</option>
+                <option value="bfs">BFS (Amplitud) - O(nodes + edges)</option>
+                <option value="dfs">DFS (Profundidad) - O(nodes + edges)</option>
+                <option value="diverse">Kruskal (Diverso) - O(edges × log(edges))</option>
+                <option value="sorted">MergeSort - O(items × log(items))</option>
               </select>
             </div>
             
@@ -424,8 +424,8 @@
                         class="w-full px-3 py-2 border border-gray-300 
                                rounded-lg focus:ring-2 focus:ring-purple-500 
                                focus:border-transparent">
-                  <option value="dp">Dynamic Programming</option>
-                  <option value="branchandbound">Branch & Bound</option>
+                  <option value="dp">Dynamic Programming - O(movies × timeBudget)</option>
+                  <option value="branchandbound">Branch & Bound - O(2^movies)</option>
                 </select>
               </div>
             </div>
@@ -470,9 +470,9 @@
                     class="w-full px-3 py-2 border border-gray-300 
                            rounded-lg focus:ring-2 focus:ring-purple-500 
                            focus:border-transparent">
-              <option value="global">Global (Greedy)</option>
-              <option value="by-genre">Por Género (MergeSort)</option>
-              <option value="influential">Influyentes (BFS)</option>
+              <option value="global">Global (Greedy) - O(items × log(topK))</option>
+              <option value="by-genre">Por Género (MergeSort) - O(items × log(items))</option>
+              <option value="influential">Influyentes (BFS) - O(nodes + edges)</option>
             </select>
           </div>
           <div id="genreInputContainer" class="hidden">

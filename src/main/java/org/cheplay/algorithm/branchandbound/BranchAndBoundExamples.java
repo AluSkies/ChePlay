@@ -2,6 +2,21 @@ package org.cheplay.algorithm.branchandbound;
 
 import java.util.*;
 
+/**
+ * Este algoritmo encuentra la mejor solución de suma de subconjuntos explorando
+ * el espacio de soluciones usando una cola de prioridad, priorizando estados
+ * con sumas más altas. Utiliza técnicas de acotación para podar ramas que no
+ * pueden llevar a mejores soluciones, haciéndolo más eficiente que el
+ * backtracking puro en la práctica.
+ * 
+ * Complejidad Temporal: O(2^elementos) peor caso - Complejidad temporal
+ *                       exponencial (típicamente mucho mejor en la práctica
+ *                       debido al podado)
+ * Complejidad Espacial: O(elementos) - Complejidad espacial lineal
+ *                       (para la cola de prioridad, limitada por la
+ *                       implementación)
+ * 
+ */
 public class BranchAndBoundExamples {
     public static Map<String, Object> simpleSubsetSumBB(Map<String, Object> params) {
         int target = (int) params.getOrDefault("target", 0);

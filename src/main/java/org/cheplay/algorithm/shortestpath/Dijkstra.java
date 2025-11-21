@@ -2,6 +2,22 @@ package org.cheplay.algorithm.shortestpath;
 
 import java.util.*;
 
+/**
+ * Este algoritmo encuentra los caminos más cortos desde un nodo fuente hacia
+ * todos los demás nodos en un grafo ponderado con pesos de aristas no
+ * negativos. Utiliza una cola de prioridad para procesar siempre primero el
+ * nodo con la distancia conocida más pequeña, garantizando caminos más cortos
+ * óptimos.
+ * 
+ * Complejidad Temporal: O((nodos + aristas) × log(nodos)) - Complejidad
+ * temporal linealítmica
+ * Complejidad Espacial: O(nodos) - Complejidad espacial lineal
+ * 
+ * Nota: La implementación actual usa pq.remove(v) y pq.add(v) que tienen
+ * complejidad O(nodos), haciendo que la complejidad total sea O(nodos² × log(nodos))
+ * en el peor caso. Una versión optimizada usaría una cola de prioridad con
+ * operación de disminución de clave.
+ */
 public class Dijkstra {
     public static Map<String, Object> dijkstra(Map<String, Map<String, Double>> adj, String source) {
         Map<String, Double> dist = new HashMap<>();

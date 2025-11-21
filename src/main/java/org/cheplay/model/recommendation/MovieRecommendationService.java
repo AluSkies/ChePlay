@@ -1,6 +1,7 @@
 package org.cheplay.model.recommendation;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -307,12 +308,32 @@ public class MovieRecommendationService {
         LinkedHashMap<String, Integer> sortedScores =
             MergeSort.mergeSortByValue(scores);
 
-        List<String> topMovies = sortedScores.keySet().stream()
-            .filter(id -> !watchedMovies.contains(id))
-            .limit(k <= 0 ? Integer.MAX_VALUE : k)
-            .collect(Collectors.toList());
+        // Filter out watched movies and convert to Double scores
+        // MergeSort sorts descending (highest first), so we take top k
+        Set<String> exclude = new HashSet<>(watchedMovies);
+        List<Map.Entry<String, Integer>> topEntries = 
+            sortedScores.entrySet().stream()
+                .filter(entry -> !exclude.contains(entry.getKey()))
+                .limit(k <= 0 ? Integer.MAX_VALUE : k)
+                .collect(Collectors.toList());
 
-        return mapper.decorateMovieIds(topMovies);
+        // Convert to Double scores map for the mapper
+        Map<String, Double> filteredScores = topEntries.stream()
+            .collect(Collectors.toMap(
+                Map.Entry::getKey,
+                entry -> entry.getValue().doubleValue()
+            ));
+
+        // Get the decorated results from mapper
+        List<Map<String, Object>> results = 
+            mapper.toRecommendationList(filteredScores, k);
+
+        // The mapper sorts ascending, but we want descending order.
+        // Since we already have the top k items, we just need to reverse
+        // the final list to get highest scores first
+        Collections.reverse(results);
+
+        return results;
     }
 
     /**
@@ -339,22 +360,24 @@ public class MovieRecommendationService {
     }
 
     /**
-     * Get movies with user ratings and watch counts.
+     * Get all movies with global ratings and watch counts.
+     * Returns movies with ratings or watch counts from all users,
+     * not just the current user.
      */
     private List<Map<String, Object>> getMoviesWithUserRatings(
         String userId
     ) {
         String cypher = """
             MATCH (m:Movie)
-            OPTIONAL MATCH (u:User)-[w:WATCHED]->(m)
-            WHERE toLower(coalesce(u.id, u.nombre, u.name)) =
-                  toLower($userId)
-            OPTIONAL MATCH (u)-[r:RATED]->(m)
-            WITH m, avg(r.rating) AS avgRating, sum(w.watchCount) AS watches
-            WHERE avgRating IS NOT NULL OR watches IS NOT NULL
+            OPTIONAL MATCH (anyUser:User)-[r:RATED]->(m)
+            OPTIONAL MATCH (anyUser2:User)-[w:WATCHED]->(m)
+            WITH m, 
+                 avg(r.rating) AS avgRating, 
+                 sum(w.watchCount) AS totalWatches
+            WHERE avgRating IS NOT NULL OR totalWatches IS NOT NULL
             RETURN m.id AS movieId,
                    coalesce(avgRating, 0.0) AS rating,
-                   coalesce(watches, 0) AS watchCount
+                   coalesce(totalWatches, 0) AS watchCount
             """;
 
         return db.readList(cypher, Map.of("userId", userId), record -> {

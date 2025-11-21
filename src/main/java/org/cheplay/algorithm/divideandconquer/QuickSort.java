@@ -5,6 +5,20 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Este algoritmo ordena elementos seleccionando un pivote, particionando los
+ * elementos alrededor del pivote (elementos mayores, iguales y menores que
+ * el pivote), y ordenando recursivamente las particiones. Ordena en orden
+ * descendente por valor.
+ * 
+ * Complejidad Temporal: O(elementos × log(elementos)) caso promedio -
+ *                        Complejidad temporal linealítmica
+ *                        O(elementos²) peor caso - Complejidad temporal
+ *                        cuadrática (ocurre cuando el pivote es siempre el
+ *                        mínimo o máximo)
+ * Complejidad Espacial: O(log(elementos)) - Complejidad espacial logarítmica
+ *                       (para la pila de recursión en el caso promedio)
+ */
 public class QuickSort {
 
     public static LinkedHashMap<String, Integer> quicksort(LinkedHashMap<String, Integer> map) {

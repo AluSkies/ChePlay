@@ -2,6 +2,17 @@ package org.cheplay.algorithm.mst;
 
 import java.util.*;
 
+/**
+ * Este algoritmo encuentra un árbol de expansión mínima comenzando desde
+ * un nodo dado y agregando codiciosamente la arista de peso mínimo que
+ * conecta un nodo en el MST con un nodo fuera del MST. Utiliza una cola
+ * de prioridad para seleccionar eficientemente la siguiente arista a agregar.
+ * 
+ * Complejidad Temporal: O(aristas × log(nodos)) - Complejidad temporal
+ * linealítmica
+ * Complejidad Espacial: O(nodos + aristas) - Complejidad espacial lineal
+ * 
+ */
 public class Prim {
     public static Map<String, Object> minimumSpanningTree(Map<String, Map<String, Double>> adj, String start) {
         if (start == null || !adj.containsKey(start)) return Map.of("mst", Collections.emptyList(), "weight", 0.0);
