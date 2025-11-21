@@ -55,7 +55,6 @@ public class MovieRecommendationService {
             throw new IllegalArgumentException("userId is required");
         }
 
-        int depth = maxDepth != null ? maxDepth : 3;
         List<String> watchedMovies = getUserWatchedMovies(userId);
 
         if (watchedMovies == null || watchedMovies.isEmpty()) {
@@ -79,10 +78,13 @@ public class MovieRecommendationService {
 
             List<String> bfsOrder = BFS.bfs(adj, seed);
 
-            for (int i = 0; i < bfsOrder.size() && i < depth + 1; i++) {
+            // Process all nodes from BFS, but give higher scores to closer ones
+            for (int i = 0; i < bfsOrder.size(); i++) {
                 String movieId = bfsOrder.get(i);
                 if (!exclude.contains(movieId)) {
-                    candidates.merge(movieId, depth + 1 - i, Integer::sum);
+                    // Score based on position: earlier = higher score
+                    int score = Math.max(1, bfsOrder.size() - i);
+                    candidates.merge(movieId, score, Integer::sum);
                 }
             }
         }
@@ -112,7 +114,6 @@ public class MovieRecommendationService {
             throw new IllegalArgumentException("userId is required");
         }
 
-        int depth = maxDepth != null ? maxDepth : 4;
         List<String> watchedMovies = getUserWatchedMovies(userId);
 
         if (watchedMovies == null || watchedMovies.isEmpty()) {
@@ -138,10 +139,13 @@ public class MovieRecommendationService {
             List<String> dfsOrder = new ArrayList<>();
             DFS.dfs(seed, adj, visited, dfsOrder);
 
-            for (int i = 0; i < dfsOrder.size() && i < depth + 1; i++) {
+            // Process all nodes from DFS, but give higher scores to closer ones
+            for (int i = 0; i < dfsOrder.size(); i++) {
                 String movieId = dfsOrder.get(i);
                 if (!exclude.contains(movieId)) {
-                    candidates.merge(movieId, depth + 1 - i, Integer::sum);
+                    // Score based on position: earlier = higher score
+                    int score = Math.max(1, dfsOrder.size() - i);
+                    candidates.merge(movieId, score, Integer::sum);
                 }
             }
         }

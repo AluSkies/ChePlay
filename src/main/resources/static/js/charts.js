@@ -319,7 +319,11 @@ export const Charts = {
       label: algo.toUpperCase(),
       data: results[algo].map((item, i) => ({
         x: i + 1,
-        y: item.score || 0
+        y: item.score || 0,
+        title: item.title || item.id || `Película ${i + 1}`,
+        genre: item.genre || null,
+        year: item.year || null,
+        movieData: item
       })),
       borderColor: this.colors.getColorPalette(algorithms.length)[index],
       backgroundColor: 
@@ -336,6 +340,32 @@ export const Charts = {
       data: { datasets },
       options: {
         ...this.getBaseOptions('Comparación de Algoritmos'),
+        plugins: {
+          tooltip: {
+            callbacks: {
+              title: (context) => {
+                const dataPoint = context[0].raw;
+                return dataPoint.title || `Ranking ${dataPoint.x}`;
+              },
+              label: (context) => {
+                const algo = context.dataset.label;
+                const score = context.parsed.y.toFixed(3);
+                return `${algo}: ${score}`;
+              },
+              afterLabel: (context) => {
+                const dataPoint = context.raw;
+                const info = [];
+                if (dataPoint.genre) {
+                  info.push(`Género: ${dataPoint.genre}`);
+                }
+                if (dataPoint.year) {
+                  info.push(`Año: ${dataPoint.year}`);
+                }
+                return info;
+              }
+            }
+          }
+        },
         scales: {
           x: {
             type: 'linear',
@@ -557,4 +587,6 @@ export const Charts = {
     });
   }
 };
+
+
 

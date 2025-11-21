@@ -46,7 +46,15 @@ public class AlgorithmController {
     public ResponseEntity<?> prim(@RequestBody AlgorithmRequest req) {
         AlgorithmResponse res = new AlgorithmResponse();
         res.algorithm = "Prim";
-        res.result = algorithmService.runPrim(req);
+        // Return a Map representation for frontend compatibility
+        Object primRes = algorithmService.runPrim(req);
+        try {
+            // If it's a typed MstResult provide its Map form, otherwise return as-is
+            java.lang.reflect.Method m = primRes.getClass().getMethod("toMap");
+            res.result = m.invoke(primRes);
+        } catch (Exception ex) {
+            res.result = primRes;
+        }
         return ResponseEntity.ok(res);
     }
 

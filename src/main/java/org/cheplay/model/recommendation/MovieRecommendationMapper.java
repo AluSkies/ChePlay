@@ -130,6 +130,8 @@ public class MovieRecommendationMapper {
 
     /**
      * Decorate list of movie IDs with full metadata.
+     * Note: This method doesn't include scores. Use toRecommendationList 
+     * if you need scores.
      */
     public List<Map<String, Object>> decorateMovieIds(List<String> movieIds) {
         if (movieIds == null || movieIds.isEmpty()) {
@@ -144,6 +146,7 @@ public class MovieRecommendationMapper {
                     .getOrDefault(movieId, Map.of());
                 Map<String, Object> result = new HashMap<>();
                 result.put("id", movieId);
+                result.put("score", 0.0); // Default score for sorted lists
                 result.put("title", data.getOrDefault("title", movieId));
                 result.put("genre", data.get("genre"));
                 result.put("year", data.get("year"));

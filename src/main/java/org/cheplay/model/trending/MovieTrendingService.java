@@ -171,10 +171,10 @@ public class MovieTrendingService {
     }
 
     /**
-     * Get influential movies that drive most subsequent views.
-     * Uses BFS to track influence propagation.
+     * Get influential movies based on their out-degree (number of direct connections).
+     * Movies with more direct connections to other movies are considered more influential.
      * 
-     * Algorithm: BFS (Influence Propagation)
+     * Algorithm: Graph Out-Degree (Centrality)
      */
     public List<Map<String, Object>> trendingWithInfluence(int k) {
         if (k <= 0) {
@@ -190,9 +190,10 @@ public class MovieTrendingService {
 
         Map<String, Integer> influenceScores = new HashMap<>();
 
+        // Calculate influence as the number of direct connections (out-degree)
         for (String movieId : adj.keySet()) {
-            List<String> reachable = BFS.bfs(adj, movieId);
-            influenceScores.put(movieId, reachable.size());
+            int directConnections = adj.get(movieId).size();
+            influenceScores.put(movieId, directConnections);
         }
 
         LinkedHashMap<String, Integer> sortedInfluence =

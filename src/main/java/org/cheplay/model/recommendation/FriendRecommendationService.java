@@ -10,7 +10,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.cheplay.algorithm.shortestpath.Dijkstra;
+import org.cheplay.algorithm.adapters.ShortestPathSolver;
 import org.cheplay.model.graph.GraphRelationship;
 import org.cheplay.neo4j.DbConnector;
 import org.neo4j.driver.Record;
@@ -27,13 +27,15 @@ import org.springframework.stereotype.Service;
 @Service
 public class FriendRecommendationService {
 
-    private final DbConnector db;
+        private final DbConnector db;
         private final FriendRecommendationMapper mapper;
+        private final ShortestPathSolver shortestPathSolver;
 
-        public FriendRecommendationService(DbConnector db, FriendRecommendationMapper mapper) {
-        this.db = Objects.requireNonNull(db, "DbConnector");
+        public FriendRecommendationService(DbConnector db, FriendRecommendationMapper mapper, ShortestPathSolver shortestPathSolver) {
+                this.db = Objects.requireNonNull(db, "DbConnector");
                 this.mapper = Objects.requireNonNull(mapper);
-    }
+                this.shortestPathSolver = Objects.requireNonNull(shortestPathSolver);
+        }
 
     // Consulta global (puede usarse para construir el grafo completo)
     private static final String GLOBAL_CYPHER =
@@ -103,16 +105,8 @@ public class FriendRecommendationService {
                 String sourceKey = resolveKey(adj, userId);
                 if (sourceKey == null) return List.of();
 
-                Map<String, Object> res = Dijkstra.dijkstra(adj, sourceKey);
-                @SuppressWarnings("unchecked")
-                Map<String, Double> distances = (Map<String, Double>) res.get("distances");
-
-                List<Map.Entry<String, Double>> ranked = distances.entrySet().stream()
-                                .filter(e -> !e.getKey().equals(sourceKey) && !Double.isInfinite(e.getValue()))
-                                .sorted(Map.Entry.comparingByValue())
-                                .limit(k <= 0 ? Integer.MAX_VALUE : k)
-                                .collect(Collectors.toList());
-
+                Map<String, Double> distances = shortestPathSolver.multiSourceDijkstra(adj, List.of(sourceKey));
+                java.util.List<Map.Entry<String, Double>> ranked = RecommendationHelpers.rankDistances(distances, sourceKey, k);
                 return mapper.decorateRankedUsers(ranked, "distance");
     }
 
@@ -126,17 +120,10 @@ public class FriendRecommendationService {
                 String sourceKey = resolveKey(adj, userId);
                 if (sourceKey == null) return null;
 
-                Map<String, Object> res = Dijkstra.dijkstra(adj, sourceKey);
-                @SuppressWarnings("unchecked")
-                Map<String, Double> distances = (Map<String, Double>) res.get("distances");
-
-                Map.Entry<String, Double> best = distances.entrySet().stream()
-                                .filter(e -> !e.getKey().equals(sourceKey) && !Double.isInfinite(e.getValue()))
-                                .min(Map.Entry.comparingByValue())
-                                .orElse(null);
-
-                if (best == null) return null;
-                return mapper.decorateRankedUsers(List.of(best), "distance").stream().findFirst().orElse(null);
+                Map<String, Double> distances = shortestPathSolver.multiSourceDijkstra(adj, List.of(sourceKey));
+                java.util.List<Map.Entry<String, Double>> rankedAll = RecommendationHelpers.rankDistances(distances, sourceKey, 1);
+                if (rankedAll.isEmpty()) return null;
+                return mapper.decorateRankedUsers(rankedAll, "distance").stream().findFirst().orElse(null);
         }
 
         // Helper: try exact match, then case-insensitive match of keys in adjacency map
@@ -202,17 +189,33 @@ public class FriendRecommendationService {
             }
 
                 /**
-                 * Devuelve vecinos junto con las canciones compartidas (lista de ids/nombres de song) y el overlap.
-                 * Cada elemento es un Map con keys: neighbor (String), overlap (long), weight (double), songs (List<String>)
+                 * Devuelve vecinos junto con las canciones compartidas (lista de objetos con id, title, artist) y el overlap.
+                 * Cada elemento es un Map con keys: neighbor (String), overlap (long), weight (double), songs (List<Map<String, Object>>)
                  */
                 public List<Map<String, Object>> getNeighborsWithSharedSongs(String userId) {
                         String cypher = "MATCH (p1:User) WHERE toLower(coalesce(p1.id,p1.nombre,p1.name)) = toLower($userId) " +
                                         "MATCH (p1)-[:LIKED_SONG]->(s:Song)<-[:LIKED_SONG]-(p2:User) " +
-                                        "WITH coalesce(p2.id,p2.nombre,p2.name) AS neighbor, collect(DISTINCT coalesce(s.id,s.name,s.title)) AS songs, count(DISTINCT s) AS overlap " +
-                                        "WHERE overlap > 0 RETURN neighbor, overlap, 1.0/(overlap+1.0) AS weight, songs ORDER BY overlap DESC";
+                                        "WITH coalesce(p2.id,p2.nombre,p2.name) AS neighbor, s " +
+                                        "WITH neighbor, collect(DISTINCT s) AS songsList " +
+                                        "WITH neighbor, songsList, size(songsList) AS overlap " +
+                                        "WHERE overlap > 0 " +
+                                        "UNWIND songsList AS s " +
+                                        "WITH neighbor, overlap, 1.0/(overlap+1.0) AS weight, " +
+                                        "     {id: coalesce(s.id,s.name,s.title), " +
+                                        "      title: coalesce(s.title,s.name,s.id), " +
+                                        "      artist: coalesce(s.artist,s.band,'')} AS song " +
+                                        "WITH neighbor, overlap, weight, collect(DISTINCT song) AS songs " +
+                                        "RETURN neighbor, overlap, weight, songs ORDER BY overlap DESC";
 
                         return db.readList(cypher, Map.of("userId", userId), (Record r) -> {
-                                List<String> songs = r.get("songs").asList(v -> v.asString());
+                                List<Map<String, Object>> songs = r.get("songs").asList(v -> {
+                                        Map<String, Object> songMap = v.asMap();
+                                        Map<String, Object> song = new HashMap<>();
+                                        song.put("id", songMap.get("id"));
+                                        song.put("title", songMap.get("title"));
+                                        song.put("artist", songMap.get("artist"));
+                                        return song;
+                                });
                                 return Map.of(
                                                 "neighbor", r.get("neighbor").asString(),
                                                 "overlap", r.get("overlap").asLong(),
@@ -262,16 +265,8 @@ public class FriendRecommendationService {
                         int userNeighborCount = 0;
 
                         if (sourceKey != null) {
-                                Map<String, Object> dijkstraRes = Dijkstra.dijkstra(adj, sourceKey);
-                                @SuppressWarnings("unchecked")
-                                Map<String, Double> distances = (Map<String, Double>) dijkstraRes.get("distances");
-
-                                List<Map.Entry<String, Double>> shortestEntries = distances.entrySet().stream()
-                                        .filter(e -> !e.getKey().equals(sourceKey) && !Double.isInfinite(e.getValue()))
-                                        .sorted(Map.Entry.comparingByValue())
-                                        .limit(cappedLimit)
-                                        .collect(Collectors.toList());
-
+                                Map<String, Double> distances = shortestPathSolver.multiSourceDijkstra(adj, List.of(sourceKey));
+                                java.util.List<Map.Entry<String, Double>> shortestEntries = RecommendationHelpers.rankDistances(distances, sourceKey, cappedLimit);
                                 shortest = mapper.decorateRankedUsers(shortestEntries, "distance");
                                 closest = shortest.isEmpty() ? null : shortest.get(0);
 

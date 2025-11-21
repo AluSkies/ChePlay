@@ -91,6 +91,87 @@ export const UI = {
     `;
   },
 
+  createFriendCard(friend, sharedSongs = [], scoreKey = 'weight', isHighlighted = false) {
+    const displayName = friend.name || friend.label || friend.id || 'Usuario';
+    const username = friend.username ? `@${friend.username}` : '';
+    const score = friend[scoreKey];
+    const scoreLabel = scoreKey === 'distance' ? 'Distancia' : 'Peso';
+    const scoreValue = score != null ? this.formatScore(score) : 'N/A';
+    const sharedCount = sharedSongs.length;
+    
+    const highlightClass = isHighlighted ? 'ring-2 ring-purple-500 bg-purple-50' : '';
+    
+    return `
+      <div class="result-item p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition ${highlightClass}">
+        <div class="flex items-start gap-3">
+          <div class="w-12 h-12 rounded-full bg-gradient-to-r 
+                      from-purple-600 to-purple-800 flex items-center 
+                      justify-center text-white font-semibold text-lg flex-shrink-0">
+            ${displayName[0].toUpperCase()}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="font-medium text-gray-900 text-base">
+              ${displayName}
+            </div>
+            ${username ? `
+              <div class="text-sm text-gray-500 mt-0.5">
+                ${username}
+              </div>
+            ` : ''}
+            ${score != null ? `
+              <div class="mt-2 flex items-center gap-2">
+                <span class="text-xs font-medium text-gray-600">${scoreLabel}:</span>
+                <span class="badge badge-primary text-xs">${scoreValue}</span>
+              </div>
+            ` : ''}
+            ${sharedCount > 0 ? `
+              <div class="mt-2">
+                <div class="text-xs font-medium text-gray-600 mb-1">
+                  ${sharedCount} ${sharedCount === 1 ? 'canción compartida' : 'canciones compartidas'}:
+                </div>
+                <div class="flex flex-wrap gap-1">
+                  ${sharedSongs.slice(0, 5).map(song => {
+                    // Handle both object format (with title/artist) and string format (backward compatibility)
+                    let songLabel = '';
+                    if (typeof song === 'object' && song !== null) {
+                      const title = song.title || song.id || '';
+                      const artist = song.artist || '';
+                      if (artist && title) {
+                        songLabel = `${artist} - ${title}`;
+                      } else if (title) {
+                        songLabel = title;
+                      } else {
+                        songLabel = song.id || '';
+                      }
+                    } else {
+                      songLabel = song || '';
+                    }
+                    return `
+                    <span class="inline-block px-2 py-1 bg-purple-100 text-purple-700 
+                                 rounded text-xs font-medium" title="${songLabel}">
+                      ${songLabel.length > 25 ? songLabel.substring(0, 23) + '...' : songLabel}
+                    </span>
+                  `;
+                  }).join('')}
+                  ${sharedCount > 5 ? `
+                    <span class="inline-block px-2 py-1 bg-gray-200 text-gray-600 
+                                 rounded text-xs">
+                      +${sharedCount - 5} más
+                    </span>
+                  ` : ''}
+                </div>
+              </div>
+            ` : `
+              <div class="mt-2 text-xs text-gray-400">
+                No hay canciones compartidas
+              </div>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
   createResultCard(item, type = 'default') {
     const templates = {
       friend: (data) => `

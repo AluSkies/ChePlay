@@ -8,8 +8,15 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.cheplay.algorithm.adapters.MstEdge;
+import org.cheplay.algorithm.adapters.MstResult;
+import org.cheplay.algorithm.adapters.MstSolver;
+import org.cheplay.algorithm.adapters.ShortestPathSolver;
 import org.cheplay.dto.AlgorithmRequest;
+import static org.cheplay.model.recommendation.RecommendationHelpers.buildAdjFromMst;
+import static org.cheplay.model.recommendation.RecommendationHelpers.chooseBestOrFallback;
 import org.cheplay.neo4j.DbConnector;
+import org.cheplay.neo4j.DynamicGraphAdapter;
 import org.springframework.stereotype.Service;
 
 /**
@@ -19,16 +26,22 @@ import org.springframework.stereotype.Service;
 @Service
 public class SongRecommendationService {
 
-    private final org.cheplay.neo4j.DynamicGraphAdapter dynamicGraphAdapter;
+    private final DynamicGraphAdapter dynamicGraphAdapter;
     private final DbConnector db;
     private final SongRecommendationMapper mapper;
+    private final ShortestPathSolver shortestPathSolver;
+    private final MstSolver mstSolver;
 
-    public SongRecommendationService(org.cheplay.neo4j.DynamicGraphAdapter dynamicGraphAdapter,
+    public SongRecommendationService(DynamicGraphAdapter dynamicGraphAdapter,
                                      DbConnector db,
-                                     SongRecommendationMapper mapper) {
+                                     SongRecommendationMapper mapper,
+                                     ShortestPathSolver shortestPathSolver,
+                                     MstSolver mstSolver) {
         this.dynamicGraphAdapter = Objects.requireNonNull(dynamicGraphAdapter);
         this.db = Objects.requireNonNull(db);
         this.mapper = Objects.requireNonNull(mapper);
+        this.shortestPathSolver = Objects.requireNonNull(shortestPathSolver);
+        this.mstSolver = Objects.requireNonNull(mstSolver);
     }
 
     private static final int MAX_SEED_COUNT = 15;
@@ -59,53 +72,15 @@ public class SongRecommendationService {
         Map<String, Map<String, Double>> adj = dynamicGraphAdapter.buildAdjacency(req);
 
         
-        Map<String, Double> distances = runMultiSourceDijkstra(adj, seeds);
+        Map<String, Double> distances = shortestPathSolver.multiSourceDijkstra(adj, seeds);
 
-        Map<String, Double> best = new HashMap<>();
-        Map<String, Double> fallback = new HashMap<>();
-        for (Map.Entry<String, Double> e : distances.entrySet()) {
-            String node = e.getKey();
-            double d = e.getValue();
-            if (Double.isInfinite(d)) continue;
-            if (seedSet.contains(node)) continue; // never recommend exact seeds
-            fallback.put(node, d);
-            if (!exclude.contains(node)) {
-                best.put(node, d);
-            }
-        }
-
-        Map<String, Double> chosen = best.isEmpty() ? fallback : best;
+        Map<String, Double> chosen = chooseBestOrFallback(distances, exclude, seedSet);
         return mapper.toRecommendationList(chosen, k);
     }
-    /** Run a multi-source Dijkstra over adj starting from all sources with distance 0. */
-    private Map<String, Double> runMultiSourceDijkstra(Map<String, Map<String, Double>> adj, List<String> sources) {
-        Map<String, Double> dist = new HashMap<>();
-        for (String v : adj.keySet()) dist.put(v, Double.POSITIVE_INFINITY);
-        if (sources == null || sources.isEmpty()) return dist;
-        java.util.PriorityQueue<String> pq = new java.util.PriorityQueue<>(java.util.Comparator.comparingDouble(dist::get));
-        for (String s : sources) {
-            if (!adj.containsKey(s)) continue;
-            dist.put(s, 0.0);
-            pq.add(s);
-        }
-        while (!pq.isEmpty()) {
-            String u = pq.poll();
-            for (Map.Entry<String, Double> e : adj.getOrDefault(u, java.util.Collections.emptyMap()).entrySet()) {
-                String v = e.getKey();
-                double w = e.getValue();
-                double alt = dist.getOrDefault(u, Double.POSITIVE_INFINITY) + w;
-                if (alt < dist.getOrDefault(v, Double.POSITIVE_INFINITY)) {
-                    dist.put(v, alt);
-                    pq.remove(v);
-                    pq.add(v);
-                }
-            }
-        }
-        return dist;
-    }
+    // Shortest-path logic moved to `ShortestPathSolver` implementation.
 
     /** Build adjacency map of the MST returned by Prim and run multi-source Dijkstra on the tree. */
-    @SuppressWarnings("unchecked")
+
     public List<Map<String, Object>> recommendForUserUsingPrim(String userId, int k, Integer window, Double lambda) {
         if (userId == null) throw new IllegalArgumentException("userId is required");
         int win = window != null ? window : 10;
@@ -129,35 +104,12 @@ public class SongRecommendationService {
 
         String start = seeds.stream().filter(adj::containsKey).findFirst().orElse(null);
         if (start == null) return List.of();
-        Map<String, Object> mstRes = org.cheplay.algorithm.mst.Prim.minimumSpanningTree(adj, start);
-        List<Object> edges = (List<Object>) mstRes.getOrDefault("mst", java.util.Collections.emptyList());
-        Map<String, Map<String, Double>> treeAdj = new HashMap<>();
-        for (Object o : edges) {
-            if (o == null) continue;
-            try {
-                org.cheplay.algorithm.mst.Prim.Edge e = (org.cheplay.algorithm.mst.Prim.Edge) o;
-                treeAdj.computeIfAbsent(e.from, x -> new HashMap<>()).put(e.to, e.weight);
-                treeAdj.computeIfAbsent(e.to, x -> new HashMap<>()).put(e.from, e.weight);
-            } catch (ClassCastException ex) {
-                // ignore unexpected types
-            }
-        }
+        MstResult mstRes = mstSolver.minimumSpanningTree(adj, start);
+        List<MstEdge> edges = mstRes.getMst();
+        Map<String, Map<String, Double>> treeAdj = buildAdjFromMst(edges);
 
-        Map<String, Double> distances = runMultiSourceDijkstra(treeAdj, seeds);
-        Map<String, Double> best = new HashMap<>();
-        Map<String, Double> fallback = new HashMap<>();
-        for (Map.Entry<String, Double> e : distances.entrySet()) {
-            String node = e.getKey();
-            double d = e.getValue();
-            if (Double.isInfinite(d)) continue;
-            if (seedSet.contains(node)) continue;
-            fallback.put(node, d);
-            if (!exclude.contains(node)) {
-                best.put(node, d);
-            }
-        }
-
-        Map<String, Double> chosen = best.isEmpty() ? fallback : best;
+        Map<String, Double> distances = shortestPathSolver.multiSourceDijkstra(treeAdj, seeds);
+        Map<String, Double> chosen = chooseBestOrFallback(distances, exclude, seedSet);
         return mapper.toRecommendationList(chosen, k);
     }
 
